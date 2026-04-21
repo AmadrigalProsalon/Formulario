@@ -1,0 +1,254 @@
+:root {
+  --primary: #2563eb;
+  --bg: #f3f2f1;
+  --card: #ffffff;
+  --border: #e5e7eb;
+  --text: #111827;
+  --muted: #6b7280;
+}
+
+/* BASE */
+body {
+  background: var(--bg);
+  margin: 0;
+  font-family: "Segoe UI", Arial, sans-serif;
+  color: var(--text);
+}
+
+/* CONTENEDOR */
+.container {
+  max-width: 650px;
+  margin: 60px auto;
+  padding: 0 15px;
+}
+
+/* TARJETA */
+.card {
+  background: var(--card);
+  padding: 40px;
+  border-radius: 14px;
+  box-shadow: 0 10px 30px rgba(0,0,0,0.08);
+  border: 1px solid #f1f5f9;
+}
+
+/* TITULOS */
+h2 {
+  font-size: 22px;
+  font-weight: 600;
+  margin-bottom: 5px;
+}
+
+.subtitle {
+  color: var(--muted);
+  font-size: 14px;
+  margin-bottom: 20px;
+}
+
+/* SECCIONES */
+.section-title {
+  margin-top: 35px;
+  font-size: 18px;
+  font-weight: 600;
+  border-left: 4px solid var(--primary);
+  padding-left: 10px;
+}
+
+/* CAMPOS */
+.field {
+  margin-top: 22px;
+}
+
+label {
+  font-weight: 500;
+  display: block;
+  margin-bottom: 6px;
+}
+
+.required {
+  color: red;
+}
+
+/* INPUTS */
+input, select, textarea {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  font-size: 14px;
+  background: #fff;
+  transition: 0.2s;
+}
+
+input:hover, select:hover, textarea:hover {
+  border-color: #cbd5e1;
+}
+
+input:focus, select:focus, textarea:focus {
+  border-color: var(--primary);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37,99,235,0.1);
+}
+
+textarea {
+  min-height: 90px;
+}
+
+/* OPCIONES (radio / checkbox) */
+.options {
+  margin-top: 5px;
+}
+
+.options label {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 6px 10px;
+  border-radius: 8px;
+  font-weight: normal;
+  cursor: pointer;
+  transition: 0.2s;
+}
+
+.options label:hover {
+  background: #f1f5f9;
+}
+
+.options input {
+  width: auto;
+}
+
+/* BOTONES */
+button {
+  border-radius: 8px;
+  font-size: 14px;
+  cursor: pointer;
+  border: none;
+}
+
+/* CONTENEDOR BOTONES */
+.buttons {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 25px;
+}
+
+/* BOTÓN PRINCIPAL */
+.btn-primary {
+  background: var(--primary);
+  color: white;
+  padding: 10px 16px;
+}
+
+.btn-primary:hover {
+  background: #1e40af;
+}
+
+/* BOTÓN SECUNDARIO */
+.btn-secondary {
+  background: #e5e7eb;
+  color: #111827;
+  padding: 10px 16px;
+}
+
+.btn-secondary:hover {
+  background: #d1d5db;
+}
+
+/* BOTÓN SUBMIT FULL WIDTH */
+button[type="submit"] {
+  width: 100%;
+  padding: 14px;
+}
+
+/* PROGRESS BAR */
+.progress {
+  height: 8px;
+  background: #e5e7eb;
+  border-radius: 20px;
+  overflow: hidden;
+  margin-bottom: 20px;
+}
+
+.progress-bar {
+  height: 100%;
+  width: 25%;
+  background: linear-gradient(90deg, #2563eb, #3b82f6);
+  transition: 0.3s;
+}
+
+/* STEPS */
+.step {
+  display: none;
+  animation: fade 0.3s ease;
+}
+
+.step.active {
+  display: block;
+}
+
+/* ANIMACIÓN */
+@keyframes fade {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* INPUT "OTRO" */
+#horarioOtro {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+  margin-top: 10px;
+}
+
+/* TABLAS (ADMIN) */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 20px;
+}
+
+th, td {
+  padding: 10px;
+  border-bottom: 1px solid #eee;
+  text-align: left;
+}
+
+th {
+  background: #f9fafb;
+}
+
+tr:hover {
+  background: #f3f4f6;
+}
+
+/* FILTROS ADMIN */
+.filters {
+  display: flex;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+/* RESPONSIVE */
+@media (max-width: 768px) {
+  .container {
+    margin: 20px;
+  }
+
+  .card {
+    padding: 20px;
+  }
+}
+.input-otro {
+  width: 100%;
+  padding: 10px;
+  border-radius: 8px;
+  border: 1px solid #ccc;
+}
