@@ -1,0 +1,53 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: formulario_rh_app
+    restart: unless-stopped
+    working_dir: /var/www/html
+    env_file:
+      - .env
+    volumes:
+      - formulario_rh_storage:/var/www/html/storage
+    depends_on:
+      - db
+    networks:
+      - formulario_rh_network
+
+  nginx:
+    image: nginx:alpine
+    container_name: formulario_rh_nginx
+    restart: unless-stopped
+    ports:
+      - "8091:80"
+    volumes:
+      - .:/var/www/html:ro
+      - formulario_rh_storage:/var/www/html/storage
+      - ./docker/nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      - app
+    networks:
+      - formulario_rh_network
+
+  db:
+    image: mysql:8.0
+    container_name: formulario_rh_db
+    restart: unless-stopped
+    environment:
+      MYSQL_DATABASE: formulario_rh
+      MYSQL_ROOT_PASSWORD: Taquito26
+      MYSQL_USER: formulario_user
+      MYSQL_PASSWORD: Taquito26
+    volumes:
+      - formulario_rh_mysql:/var/lib/mysql
+    networks:
+      - formulario_rh_network
+
+volumes:
+  formulario_rh_mysql:
+  formulario_rh_storage:
+
+networks:
+  formulario_rh_network:
+    driver: bridge
