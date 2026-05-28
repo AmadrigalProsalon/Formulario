@@ -10,8 +10,6 @@ class Catalogo extends Model
 
     protected $fillable = [
         'tipo',
-        'valor'
+        'valor',
     ];
-
-    public $timestamps = false; // 🔥 importante si tu tabla no tiene created_at
 }

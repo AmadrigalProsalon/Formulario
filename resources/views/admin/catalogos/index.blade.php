@@ -1,0 +1,163 @@
+@extends('admin.layout')
+
+@section('title', 'Catálogos')
+@section('page_title', 'Catálogos del formulario')
+@section('page_description', 'Administra las opciones que usan los selects, radios o checkboxes.')
+
+@section('content')
+    <div class="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 class="text-lg font-bold mb-4">Agregar opción</h2>
+
+            <form method="POST" action="{{ route('admin.catalogos.store') }}" class="space-y-4">
+                @csrf
+
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Tipo</label>
+                    <input type="text"
+                           name="tipo"
+                           value="{{ old('tipo', $filters['tipo'] ?? '') }}"
+                           placeholder="ej. departamento"
+                           class="w-full rounded-xl border-slate-300"
+                           required>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Valor</label>
+                    <input type="text"
+                           name="valor"
+                           value="{{ old('valor') }}"
+                           placeholder="ej. Ventas"
+                           class="w-full rounded-xl border-slate-300"
+                           required>
+                </div>
+
+                <button type="submit"
+                        class="w-full rounded-xl bg-slate-950 text-white px-5 py-2.5 hover:bg-slate-800">
+                    Agregar
+                </button>
+            </form>
+        </div>
+
+        <div class="lg:col-span-2 bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 class="text-lg font-bold mb-4">Filtros</h2>
+
+            <form method="GET" action="{{ route('admin.catalogos.index') }}" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Tipo</label>
+                    <select name="tipo" class="w-full rounded-xl border-slate-300">
+                        <option value="">Todos</option>
+                        @foreach($tipos as $tipo)
+                            <option value="{{ $tipo }}" @selected(($filters['tipo'] ?? '') === $tipo)>
+                                {{ $tipo }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Buscar</label>
+                    <input type="text"
+                           name="q"
+                           value="{{ $filters['q'] ?? '' }}"
+                           placeholder="Buscar valor..."
+                           class="w-full rounded-xl border-slate-300">
+                </div>
+
+                <div class="flex items-end gap-2">
+                    <button type="submit"
+                            class="w-full rounded-xl bg-slate-950 text-white px-5 py-2.5 hover:bg-slate-800">
+                        Filtrar
+                    </button>
+
+                    <a href="{{ route('admin.catalogos.index') }}"
+                       class="rounded-xl bg-slate-200 text-slate-800 px-4 py-2.5 hover:bg-slate-300">
+                        Limpiar
+                    </a>
+                </div>
+            </form>
+
+            <div class="mt-5 text-sm text-slate-500">
+                Para conectar un campo con un catálogo, en el campo usa:
+                <strong>data_source = catalogos</strong> y
+                <strong>data_table = tipo_del_catalogo</strong>.
+            </div>
+        </div>
+    </div>
+
+    <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
+        <div class="p-5 border-b border-slate-200">
+            <h2 class="text-lg font-bold">Opciones registradas</h2>
+            <p class="text-sm text-slate-500">Mostrando {{ $catalogos->count() }} de {{ $catalogos->total() }}</p>
+        </div>
+
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-slate-600">
+                    <tr>
+                        <th class="text-left p-4">Tipo</th>
+                        <th class="text-left p-4">Valor</th>
+                        <th class="text-right p-4">Acciones</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-100">
+                    @forelse($catalogos as $catalogo)
+                        <tr class="hover:bg-slate-50">
+                            <td class="p-4 font-mono text-xs">{{ $catalogo->tipo }}</td>
+                            <td class="p-4">
+                                <form id="form-catalogo-{{ $catalogo->id }}"
+                                      method="POST"
+                                      action="{{ route('admin.catalogos.update', $catalogo->id) }}"
+                                      class="grid grid-cols-1 md:grid-cols-2 gap-3">
+                                    @csrf
+                                    @method('PUT')
+
+                                    <input type="text"
+                                           name="tipo"
+                                           value="{{ $catalogo->tipo }}"
+                                           class="rounded-xl border-slate-300">
+
+                                    <input type="text"
+                                           name="valor"
+                                           value="{{ $catalogo->valor }}"
+                                           class="rounded-xl border-slate-300">
+                                </form>
+                            </td>
+                            <td class="p-4">
+                                <div class="flex justify-end gap-2">
+                                    <button type="submit"
+                                            form="form-catalogo-{{ $catalogo->id }}"
+                                            class="rounded-xl bg-slate-950 text-white px-3 py-2 hover:bg-slate-800">
+                                        Guardar
+                                    </button>
+
+                                    <form method="POST"
+                                          action="{{ route('admin.catalogos.destroy', $catalogo->id) }}"
+                                          onsubmit="return confirm('¿Eliminar esta opción?')">
+                                        @csrf
+                                        @method('DELETE')
+
+                                        <button type="submit"
+                                                class="rounded-xl bg-red-600 text-white px-3 py-2 hover:bg-red-700">
+                                            Eliminar
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="3" class="p-8 text-center text-slate-500">
+                                No hay catálogos registrados.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <div class="p-5 border-t border-slate-200">
+            {{ $catalogos->links() }}
+        </div>
+    </div>
+@endsection

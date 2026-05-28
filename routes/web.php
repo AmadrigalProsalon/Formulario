@@ -1,42 +1,102 @@
 <?php
 
-use App\Http\Controllers\FormController;
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\CatalogoController;
 use App\Http\Controllers\ExcelController;
+use App\Http\Controllers\FormController;
+use App\Http\Controllers\FormularioController;
+use Illuminate\Support\Facades\Route;
 
-/* FORM */
-Route::get('/', [FormController::class,'index']);
-Route::post('/guardar', [FormController::class,'store']);
-Route::get('/data/{tipo}', [FormController::class,'getData']);
+/*
+|--------------------------------------------------------------------------
+| FORMULARIOS PÚBLICOS
+|--------------------------------------------------------------------------
+*/
+
+Route::get('/', [FormController::class, 'index'])->name('form.index');
+
+Route::get('/f/{formulario:slug}', [FormController::class, 'index'])
+    ->name('form.show');
+
+Route::post('/guardar', [FormController::class, 'storeDefault'])
+    ->middleware('throttle:6,1')
+    ->name('form.store.default');
+
+Route::post('/f/{formulario:slug}/guardar', [FormController::class, 'store'])
+    ->middleware('throttle:6,1')
+    ->name('form.store');
+
+Route::get('/data/{tipo}', [FormController::class, 'getData'])
+    ->where('tipo', '[A-Za-z0-9_\-]+')
+    ->name('form.data');
+
 Route::get('/gracias', function () {
     return view('gracias');
-});
-/* ADMIN */
-Route::middleware(['auth'])->prefix('admin')->group(function(){
+})->name('form.gracias');
 
-    Route::get('/', [AdminController::class,'dashboard']);
+/*
+|--------------------------------------------------------------------------
+| RUTA DASHBOARD PARA BREEZE
+|--------------------------------------------------------------------------
+| Breeze redirecciona automáticamente a route('dashboard') después del login.
+| Esta ruta manda a los administradores al panel RH.
+|--------------------------------------------------------------------------
+*/
 
-    // RESPUESTAS
-    Route::get('/respuesta/{id}', [AdminController::class,'view']);
+Route::get('/dashboard', function () {
+    if (auth()->check() && auth()->user()->is_admin) {
+        return redirect()->route('admin.dashboard');
+    }
 
-    // CAMPOS DINÁMICOS
-    Route::get('/fields', [AdminController::class, 'fields']);
-    Route::post('/fields/store', [AdminController::class, 'storeField']);
+    return redirect()->route('form.index');
+})->middleware(['auth'])->name('dashboard');
 
-    Route::get('/fields/edit/{id}', [AdminController::class, 'editField']);
-    Route::post('/fields/update/{id}', [AdminController::class, 'updateField']);
+/*
+|--------------------------------------------------------------------------
+| ADMIN RH
+|--------------------------------------------------------------------------
+*/
 
-    Route::delete('/fields/delete/{id}', [AdminController::class, 'deleteField']);
+Route::middleware(['auth', 'admin'])
+    ->prefix('admin')
+    ->name('admin.')
+    ->group(function () {
+        Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
 
-    Route::get('/fields/toggle/{id}', [AdminController::class, 'toggleField']);
+        // Formularios
+        Route::get('/formularios', [FormularioController::class, 'index'])->name('formularios.index');
+        Route::post('/formularios', [FormularioController::class, 'store'])->name('formularios.store');
+        Route::put('/formularios/{formulario}', [FormularioController::class, 'update'])->name('formularios.update');
+        Route::delete('/formularios/{formulario}', [FormularioController::class, 'destroy'])->name('formularios.destroy');
+        Route::post('/formularios/{formulario}/toggle', [FormularioController::class, 'toggle'])->name('formularios.toggle');
+        Route::post('/formularios/{formulario}/default', [FormularioController::class, 'makeDefault'])->name('formularios.default');
 
-    Route::post('/admin/respuesta/update/{id}', [AdminController::class, 'update']);
-    // IMPORT
-    Route::get('/import', function () {
-        return view('admin.import');
+        // Respuestas
+        Route::get('/respuestas', [AdminController::class, 'dashboard'])->name('respuestas.index');
+        Route::get('/respuestas/export', [AdminController::class, 'exportRespuestas'])->name('respuestas.export');
+        Route::get('/respuesta/{id}', [AdminController::class, 'view'])->name('respuesta.view');
+        Route::post('/respuesta/update/{id}', [AdminController::class, 'update'])->name('respuesta.update');
+
+        // Campos dinámicos
+        Route::get('/fields', [AdminController::class, 'fields'])->name('fields.index');
+        Route::post('/fields/store', [AdminController::class, 'storeField'])->name('fields.store');
+        Route::get('/fields/edit/{id}', [AdminController::class, 'editField'])->name('fields.edit');
+        Route::post('/fields/update/{id}', [AdminController::class, 'updateField'])->name('fields.update');
+        Route::delete('/fields/delete/{id}', [AdminController::class, 'deleteField'])->name('fields.delete');
+        Route::get('/fields/toggle/{id}', [AdminController::class, 'toggleField'])->name('fields.toggle');
+
+        // Catálogos
+        Route::get('/catalogos', [CatalogoController::class, 'index'])->name('catalogos.index');
+        Route::post('/catalogos', [CatalogoController::class, 'store'])->name('catalogos.store');
+        Route::put('/catalogos/{catalogo}', [CatalogoController::class, 'update'])->name('catalogos.update');
+        Route::delete('/catalogos/{catalogo}', [CatalogoController::class, 'destroy'])->name('catalogos.destroy');
+
+        // Importar Excel
+        Route::get('/import', function () {
+            return view('admin.import');
+        })->name('import.view');
+
+        Route::post('/import-excel', [ExcelController::class, 'import'])->name('import.excel');
     });
-    Route::post('/import-excel', [ExcelController::class, 'import']);
 
-});
-
-require __DIR__.'/auth.php';
+require __DIR__ . '/auth.php';

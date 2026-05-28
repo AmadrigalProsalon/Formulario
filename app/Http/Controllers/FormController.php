@@ -2,134 +2,252 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\FormField;
-use App\Models\Respuesta;
-use Illuminate\Support\Facades\Cache;
-use Illuminate\Support\Facades\Validator;
-use Illuminate\Support\Facades\Mail;
 use App\Mail\NuevaRespuesta;
+use App\Models\FormField;
+use App\Models\Formulario;
+use App\Models\Respuesta;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Validator;
 use PhpOffice\PhpWord\TemplateProcessor;
-
+use Throwable;
 
 class FormController extends Controller
 {
-    public function index()
+    public function index(?Formulario $formulario = null)
     {
-        $fields = Cache::remember('form_fields_active', 3600, function () {
-            return FormField::where('visible', 1)
-                ->orderBy('section')
-                ->orderBy('id')
-                ->get()
-                ->groupBy('section');
-        });
+        $formulario = $formulario ?: $this->getDefaultFormulario();
 
-        return view('form', compact('fields'));
+        if (! $formulario || ! $formulario->activo) {
+            abort(404, 'Formulario no disponible.');
+        }
+
+        $fields = FormField::where('formulario_id', $formulario->id)
+            ->where('visible', 1)
+            ->orderBy('section')
+            ->orderBy('id')
+            ->get()
+            ->groupBy('section');
+
+        $catalogos = $this->getCatalogosParaCampos($fields);
+
+        return view('form', compact('formulario', 'fields', 'catalogos'));
     }
 
-public function store(Request $req)
-{
-    $key = 'form_submit_' . $req->ip();
+    public function storeDefault(Request $request)
+    {
+        $formulario = $this->getDefaultFormulario();
 
-    if (Cache::has($key)) {
-        return redirect('/')->with('error', 'Por favor espera 30 segundos');
+        if (! $formulario) {
+            abort(404, 'No hay formulario predeterminado.');
+        }
+
+        return $this->store($request, $formulario);
     }
 
-    $camposValidos = FormField::where('visible', 1)->pluck('name')->toArray();
-    $datosFiltrados = $req->only($camposValidos);
+    public function store(Request $request, Formulario $formulario)
+    {
+        if (! $formulario->activo) {
+            abort(404, 'Formulario no disponible.');
+        }
 
-    $camposRequeridos = FormField::where('visible', 1)
-        ->where('required', 1)
-        ->pluck('name')
-        ->toArray();
+        $rateLimitKey = 'form_submit_' . $formulario->id . '_' . $request->ip();
 
-    $validator = Validator::make($datosFiltrados, array_fill_keys($camposRequeridos, 'required'));
+        if (Cache::has($rateLimitKey)) {
+            return redirect()
+                ->route('form.show', $formulario)
+                ->with('error', 'Por favor espera 30 segundos antes de enviar otro formulario.')
+                ->withInput();
+        }
 
-    if ($validator->fails()) {
-        return redirect('/')->withErrors($validator)->withInput();
-    }
+        $fields = FormField::where('formulario_id', $formulario->id)
+            ->where('visible', 1)
+            ->get();
 
-    foreach ($datosFiltrados as $k => $value) {
-        if (is_array($value)) {
-            $datosFiltrados[$k] = implode(', ', $value);
+        if ($fields->isEmpty()) {
+            return redirect()
+                ->route('form.show', $formulario)
+                ->with('error', 'Este formulario todavía no tiene campos configurados.');
+        }
+
+        $rules = [];
+
+        foreach ($fields as $field) {
+            $fieldRules = [];
+
+            if ($field->required) {
+                $fieldRules[] = $field->type === 'checkbox' ? 'array' : 'required';
+            } else {
+                $fieldRules[] = 'nullable';
+            }
+
+            if ($field->type === 'checkbox') {
+                $rules[$field->name] = $fieldRules;
+                $rules[$field->name . '.*'] = ['nullable', 'string', 'max:255'];
+            } elseif ($field->type === 'email') {
+                $rules[$field->name] = array_merge($fieldRules, ['email', 'max:255']);
+            } elseif ($field->type === 'number') {
+                $rules[$field->name] = array_merge($fieldRules, ['numeric']);
+            } elseif ($field->type === 'date') {
+                $rules[$field->name] = array_merge($fieldRules, ['date']);
+            } elseif ($field->type === 'textarea') {
+                $rules[$field->name] = array_merge($fieldRules, ['string', 'max:5000']);
+            } else {
+                $rules[$field->name] = array_merge($fieldRules, ['string', 'max:255']);
+            }
+        }
+
+        $inputPermitido = $request->only($fields->pluck('name')->toArray());
+
+        $validator = Validator::make($inputPermitido, $rules, [
+            'required' => 'El campo :attribute es obligatorio.',
+            'email' => 'El campo :attribute debe ser un correo válido.',
+            'numeric' => 'El campo :attribute debe ser numérico.',
+            'date' => 'El campo :attribute debe ser una fecha válida.',
+            'array' => 'El campo :attribute debe ser una lista válida.',
+            'max' => 'El campo :attribute es demasiado largo.',
+        ]);
+
+        if ($validator->fails()) {
+            return redirect()
+                ->route('form.show', $formulario)
+                ->withErrors($validator)
+                ->withInput();
+        }
+
+        $datosFiltrados = $validator->validated();
+
+        foreach ($datosFiltrados as $key => $value) {
+            if (is_array($value)) {
+                $datosFiltrados[$key] = implode(', ', array_filter($value));
+            }
+        }
+
+        try {
+            $respuesta = Respuesta::create([
+                'formulario_id' => $formulario->id,
+                'data' => $datosFiltrados,
+                'departamento' => $datosFiltrados['departamento'] ?? null,
+                'puesto' => $datosFiltrados['puesto'] ?? null,
+                'horario' => $datosFiltrados['horario'] ?? null,
+                'ip' => $request->ip(),
+                'user_agent' => $request->userAgent(),
+            ]);
+
+            Cache::put($rateLimitKey, true, 30);
+
+            $filePath = $this->generarWordSiExiste($formulario, $respuesta, $datosFiltrados);
+
+            Mail::to($formulario->mail_to ?: config('rh.mail_to'))
+                ->send(new NuevaRespuesta($datosFiltrados, $filePath, $formulario));
+
+            if ($filePath && file_exists($filePath)) {
+                unlink($filePath);
+            }
+
+            return redirect()->route('form.gracias');
+        } catch (Throwable $e) {
+            Log::error('Error al guardar formulario RH', [
+                'formulario_id' => $formulario->id,
+                'message' => $e->getMessage(),
+            ]);
+
+            return redirect()
+                ->route('form.show', $formulario)
+                ->with('error', 'Ocurrió un error al procesar el formulario. Contacta al área de sistemas.')
+                ->withInput();
         }
     }
 
-// ==========================
-// GUARDAR RESPUESTA
-// ==========================
-$respuesta = Respuesta::create([
-    'data' => json_encode($datosFiltrados, JSON_UNESCAPED_UNICODE),
-    'departamento' => $datosFiltrados['departamento'] ?? null,
-    'puesto' => $datosFiltrados['puesto'] ?? null,
-    'horario' => $datosFiltrados['horario'] ?? null,
-    'ip' => $req->ip(),
-    'user_agent' => $req->userAgent()
-]);
+    private function generarWordSiExiste(Formulario $formulario, Respuesta $respuesta, array $datos): ?string
+    {
+        $templatePath = $formulario->template_path ?: config('rh.template_path');
 
-Cache::put($key, true, 30);
+        if (! $templatePath || ! file_exists($templatePath)) {
+            return null;
+        }
 
-// ==========================
-// GENERAR WORD
-// ==========================
-$template = new TemplateProcessor(
-    storage_path('app/templates/plantilla.docx')
-);
+        $template = new TemplateProcessor($templatePath);
 
-foreach ($datosFiltrados as $key => $value) {
+        foreach ($datos as $key => $value) {
+            $template->setValue($key, e((string) ($value ?? '')));
+        }
 
-    if (is_array($value)) {
-        $value = implode(', ', $value);
+        $fileName = $formulario->slug . '_' . $respuesta->id . '_' . now()->format('Ymd_His') . '.docx';
+        $filePath = storage_path('app/' . $fileName);
+
+        $template->saveAs($filePath);
+
+        return $filePath;
     }
 
-    $template->setValue($key, $value ?? '');
-}
-
-$fileName = 'perfil_'.$respuesta->id.'.docx';
-$filePath = storage_path('app/'.$fileName);
-
-$template->saveAs($filePath);
-
-// ==========================
-// ENVIAR CORREO
-// ==========================
-Mail::to('amadrigal@prosalon.mx')
-    ->send(new NuevaRespuesta($datosFiltrados, $filePath));
-
-// ==========================
-// BORRAR ARCHIVO (opcional)
-// ==========================
-unlink($filePath);
-
-// ==========================
-return redirect('/gracias');
-}
-
-public function getData($tipo)
-{
-    // Validar dinámicamente contra BD
-    $tipoExiste = \DB::table('catalogos')
-        ->where('tipo', $tipo)
-        ->exists();
-
-    if (!$tipoExiste) {
-        return response()->json(['error' => 'Tipo no válido'], 400);
+    private function getDefaultFormulario(): ?Formulario
+    {
+        return Formulario::default()->first()
+            ?: Formulario::activos()->oldest()->first();
     }
 
-    // Obtener datos con cache
-    $data = Cache::remember("catalogos_{$tipo}", 86400, function() use ($tipo) {
-        return \DB::table('catalogos')
-            ->where('tipo', $tipo)
+    private function getCatalogosParaCampos($fields): array
+    {
+        $tipos = collect($fields)
+            ->flatten()
+            ->filter(function ($field) {
+                $source = strtolower(trim($field->data_source ?? ''));
+
+                return in_array($source, ['catalogos', 'db', 'database'])
+                    && ! empty($field->data_table);
+            })
+            ->pluck('data_table')
+            ->map(fn ($tipo) => trim($tipo))
+            ->filter()
+            ->unique()
+            ->values();
+
+        if ($tipos->isEmpty()) {
+            return [];
+        }
+
+        return DB::table('catalogos')
+            ->whereIn('tipo', $tipos)
             ->orderByRaw("
                 CASE
                     WHEN LOWER(valor) = 'otro' THEN 1
                     ELSE 0
                 END
             ")
-            ->orderBy('valor', 'asc')
-            ->pluck('valor');
-    });
+            ->orderBy('valor')
+            ->get()
+            ->groupBy('tipo')
+            ->map(fn ($items) => $items->pluck('valor')->toArray())
+            ->toArray();
+    }
 
-    return response()->json($data);
-}
+    public function getData(string $tipo)
+    {
+        $tipoExiste = DB::table('catalogos')
+            ->where('tipo', $tipo)
+            ->exists();
+
+        if (! $tipoExiste) {
+            return response()->json(['error' => 'Tipo no válido'], 400);
+        }
+
+        $data = Cache::remember("catalogos_{$tipo}", 86400, function () use ($tipo) {
+            return DB::table('catalogos')
+                ->where('tipo', $tipo)
+                ->orderByRaw("
+                    CASE
+                        WHEN LOWER(valor) = 'otro' THEN 1
+                        ELSE 0
+                    END
+                ")
+                ->orderBy('valor', 'asc')
+                ->pluck('valor');
+        });
+
+        return response()->json($data);
+    }
 }

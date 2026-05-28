@@ -9,13 +9,21 @@ class Respuesta extends Model
     protected $table = 'respuestas';
 
     protected $fillable = [
+        'formulario_id',
         'departamento',
         'puesto',
         'horario',
-        'data'
+        'data',
+        'ip',
+        'user_agent',
     ];
 
     protected $casts = [
-        'data' => 'array', // 🔥 convierte JSON automáticamente a array
+        'data' => 'array',
     ];
+
+    public function formulario()
+    {
+        return $this->belongsTo(Formulario::class, 'formulario_id');
+    }
 }

@@ -9,6 +9,7 @@ class FormField extends Model
     protected $table = 'form_fields';
 
     protected $fillable = [
+        'formulario_id',
         'name',
         'label',
         'type',
@@ -16,11 +17,16 @@ class FormField extends Model
         'visible',
         'data_source',
         'data_table',
-        'section'
+        'section',
     ];
 
     protected $casts = [
         'required' => 'boolean',
-        'visible' => 'boolean'
+        'visible' => 'boolean',
     ];
+
+    public function formulario()
+    {
+        return $this->belongsTo(Formulario::class, 'formulario_id');
+    }
 }
