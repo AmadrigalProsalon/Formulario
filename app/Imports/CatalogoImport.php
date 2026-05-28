@@ -18,13 +18,15 @@ class CatalogoImport implements ToModel, WithHeadingRow
             return null;
         }
 
+        $tipo = Str::slug($tipo, '_');
+
         return Catalogo::updateOrCreate(
             [
-                'tipo' => Str::slug($tipo, '_'),
+                'tipo' => $tipo,
                 'valor' => $valor,
             ],
             [
-                'tipo' => Str::slug($tipo, '_'),
+                'tipo' => $tipo,
                 'valor' => $valor,
             ]
         );

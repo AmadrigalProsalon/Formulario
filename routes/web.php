@@ -38,9 +38,6 @@ Route::get('/gracias', function () {
 |--------------------------------------------------------------------------
 | RUTA DASHBOARD PARA BREEZE
 |--------------------------------------------------------------------------
-| Breeze redirecciona automáticamente a route('dashboard') después del login.
-| Esta ruta manda a los administradores al panel RH.
-|--------------------------------------------------------------------------
 */
 
 Route::get('/dashboard', function () {

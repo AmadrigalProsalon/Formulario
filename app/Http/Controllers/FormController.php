@@ -212,12 +212,7 @@ class FormController extends Controller
 
         return DB::table('catalogos')
             ->whereIn('tipo', $tipos)
-            ->orderByRaw("
-                CASE
-                    WHEN LOWER(valor) = 'otro' THEN 1
-                    ELSE 0
-                END
-            ")
+            ->orderByRaw("\n                CASE\n                    WHEN LOWER(valor) = 'otro' THEN 1\n                    ELSE 0\n                END\n            ")
             ->orderBy('valor')
             ->get()
             ->groupBy('tipo')
@@ -238,12 +233,7 @@ class FormController extends Controller
         $data = Cache::remember("catalogos_{$tipo}", 86400, function () use ($tipo) {
             return DB::table('catalogos')
                 ->where('tipo', $tipo)
-                ->orderByRaw("
-                    CASE
-                        WHEN LOWER(valor) = 'otro' THEN 1
-                        ELSE 0
-                    END
-                ")
+                ->orderByRaw("\n                    CASE\n                        WHEN LOWER(valor) = 'otro' THEN 1\n                        ELSE 0\n                    END\n                ")
                 ->orderBy('valor', 'asc')
                 ->pluck('valor');
         });
