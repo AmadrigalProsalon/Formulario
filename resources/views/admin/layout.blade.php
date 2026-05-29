@@ -5,7 +5,7 @@
     <title>@yield('title', 'Panel RH')</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
 
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/js/app.js'])
 </head>
 <body class="bg-slate-100 text-slate-800">
     <div class="min-h-screen flex">
@@ -24,6 +24,11 @@
                 <a href="{{ route('admin.formularios.index') }}"
                    class="block px-4 py-3 rounded-xl transition {{ request()->routeIs('admin.formularios.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">
                     Formularios
+                </a>
+
+                <a href="{{ route('admin.usuarios.index') }}"
+                   class="block px-4 py-3 rounded-xl transition {{ request()->routeIs('admin.usuarios.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">
+                    Usuarios
                 </a>
 
                 <a href="{{ route('admin.respuestas.index') }}"
@@ -79,12 +84,40 @@
             </header>
 
             <div class="md:hidden bg-slate-950 text-white p-3 flex gap-2 overflow-x-auto">
-                <a href="{{ route('admin.dashboard') }}" class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.dashboard') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">Inicio</a>
-                <a href="{{ route('admin.formularios.index') }}" class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.formularios.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">Formularios</a>
-                <a href="{{ route('admin.respuestas.index') }}" class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.respuestas.*') || request()->routeIs('admin.respuesta.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">Respuestas</a>
-                <a href="{{ route('admin.fields.index') }}" class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.fields.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">Campos</a>
-                <a href="{{ route('admin.catalogos.index') }}" class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.catalogos.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">Catálogos</a>
-                <a href="{{ route('admin.import.view') }}" class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.import.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">Excel</a>
+                <a href="{{ route('admin.dashboard') }}"
+                   class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.dashboard') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">
+                    Inicio
+                </a>
+
+                <a href="{{ route('admin.formularios.index') }}"
+                   class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.formularios.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">
+                    Formularios
+                </a>
+
+                <a href="{{ route('admin.usuarios.index') }}"
+                   class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.usuarios.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">
+                    Usuarios
+                </a>
+
+                <a href="{{ route('admin.respuestas.index') }}"
+                   class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.respuestas.*') || request()->routeIs('admin.respuesta.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">
+                    Respuestas
+                </a>
+
+                <a href="{{ route('admin.fields.index') }}"
+                   class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.fields.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">
+                    Campos
+                </a>
+
+                <a href="{{ route('admin.catalogos.index') }}"
+                   class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.catalogos.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">
+                    Catálogos
+                </a>
+
+                <a href="{{ route('admin.import.view') }}"
+                   class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.import.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">
+                    Excel
+                </a>
             </div>
 
             <section class="p-6">
