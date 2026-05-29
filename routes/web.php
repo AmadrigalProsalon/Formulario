@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\AdminController;
+use App\Http\Controllers\AdminUserController;
 use App\Http\Controllers\CatalogoController;
 use App\Http\Controllers\ExcelController;
 use App\Http\Controllers\FormController;
@@ -59,6 +60,12 @@ Route::middleware(['auth', 'admin'])
     ->name('admin.')
     ->group(function () {
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
+
+        // Usuarios
+        Route::get('/usuarios', [AdminUserController::class, 'index'])->name('usuarios.index');
+        Route::post('/usuarios', [AdminUserController::class, 'store'])->name('usuarios.store');
+        Route::put('/usuarios/{user}', [AdminUserController::class, 'update'])->name('usuarios.update');
+        Route::delete('/usuarios/{user}', [AdminUserController::class, 'destroy'])->name('usuarios.destroy');
 
         // Formularios
         Route::get('/formularios', [FormularioController::class, 'index'])->name('formularios.index');
