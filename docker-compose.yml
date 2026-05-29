@@ -20,7 +20,7 @@ services:
     container_name: formulario_rh_nginx
     restart: unless-stopped
     ports:
-      - "8091:80"
+      - "8092:80"
     volumes:
       - .:/var/www/html:ro
       - formulario_rh_storage:/var/www/html/storage
@@ -36,11 +36,26 @@ services:
     restart: unless-stopped
     environment:
       MYSQL_DATABASE: formulario_rh
-      MYSQL_ROOT_PASSWORD: Taquito26
+      MYSQL_ROOT_PASSWORD: Tamalito26
       MYSQL_USER: formulario_user
-      MYSQL_PASSWORD: Taquito26
+      MYSQL_PASSWORD: Tamalito26
     volumes:
       - formulario_rh_mysql:/var/lib/mysql
+    networks:
+      - formulario_rh_network
+
+  phpmyadmin:
+    image: phpmyadmin/phpmyadmin:latest
+    container_name: formulario_rh_phpmyadmin
+    restart: unless-stopped
+    ports:
+      - "8093:80"
+    environment:
+      PMA_HOST: db
+      PMA_PORT: 3306
+      UPLOAD_LIMIT: 64M
+    depends_on:
+      - db
     networks:
       - formulario_rh_network
 

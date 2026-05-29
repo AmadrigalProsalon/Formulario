@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>{{ $formulario->titulo }}</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/js/app.js'])
 </head>
 <body class="bg-slate-100 text-slate-800">
     <div class="max-w-4xl mx-auto py-10 px-4">
