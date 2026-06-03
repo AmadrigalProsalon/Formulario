@@ -102,5 +102,5 @@ Route::middleware(['auth', 'admin'])
 
         Route::post('/import-excel', [ExcelController::class, 'import'])->name('import.excel');
     });
-
+require __DIR__ . '/vacaciones.php';
 require __DIR__ . '/auth.php';

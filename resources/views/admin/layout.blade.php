@@ -25,6 +25,10 @@
                    class="block px-4 py-3 rounded-xl transition {{ request()->routeIs('admin.formularios.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">
                     Formularios
                 </a>
+                <a href="{{ route('admin.vacaciones.index') }}"
+                class="block px-4 py-3 rounded-xl transition {{ request()->routeIs('admin.vacaciones.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">
+                    Vacaciones
+                </a>
 
                 <a href="{{ route('admin.usuarios.index') }}"
                    class="block px-4 py-3 rounded-xl transition {{ request()->routeIs('admin.usuarios.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">
@@ -93,7 +97,10 @@
                    class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.formularios.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">
                     Formularios
                 </a>
-
+                <a href="{{ route('admin.vacaciones.index') }}"
+                   class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.vacaciones.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">
+                    Vacaciones
+                </a>
                 <a href="{{ route('admin.usuarios.index') }}"
                    class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.usuarios.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">
                     Usuarios

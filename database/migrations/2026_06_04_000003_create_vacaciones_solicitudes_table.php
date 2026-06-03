@@ -1,0 +1,36 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::create('vacaciones_solicitudes', function (Blueprint $table) {
+            $table->id();
+            $table->foreignId('empleado_id')->constrained('empleados')->cascadeOnDelete();
+            $table->foreignId('formulario_id')->nullable()->constrained('formularios')->nullOnDelete();
+            $table->foreignId('respuesta_id')->nullable()->constrained('respuestas')->nullOnDelete();
+            $table->date('fecha_inicio');
+            $table->date('fecha_fin');
+            $table->decimal('dias_solicitados', 8, 2)->default(0);
+            $table->enum('estatus', ['pendiente', 'aprobada', 'rechazada', 'cancelada'])->default('pendiente');
+            $table->text('comentarios_empleado')->nullable();
+            $table->text('comentarios_admin')->nullable();
+            $table->foreignId('aprobado_por')->nullable()->constrained('users')->nullOnDelete();
+            $table->timestamp('aprobado_at')->nullable();
+            $table->timestamp('rechazado_at')->nullable();
+            $table->timestamps();
+
+            $table->index(['empleado_id', 'estatus']);
+            $table->index(['fecha_inicio', 'fecha_fin']);
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::dropIfExists('vacaciones_solicitudes');
+    }
+};
