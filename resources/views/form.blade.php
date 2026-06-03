@@ -62,10 +62,10 @@
                 Este formulario todavía no tiene campos configurados.
 
                 @if(auth()->check() && auth()->user()->is_admin)
-                    <div class="mt-4">
+                    <div class="mt-5">
                         <a href="{{ route('admin.fields.index', ['formulario_id' => $formulario->id]) }}"
-                           class="inline-flex rounded-xl bg-blue-600 text-white px-4 py-2 hover:bg-blue-700">
-                            Crear campos
+                           class="inline-flex rounded-xl bg-blue-600 text-white px-5 py-2.5 hover:bg-blue-700">
+                            Agregar campos
                         </a>
                     </div>
                 @endif
