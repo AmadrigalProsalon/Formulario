@@ -2,11 +2,13 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class PerfilPuesto extends Model
 {
+    use HasFactory;
+
     protected $table = 'perfiles_puesto';
 
     protected $fillable = [
@@ -22,24 +24,17 @@ class PerfilPuesto extends Model
         'requerimientos_minimos',
         'cualidades',
         'habilidades',
-        'responsabilidades_text',
+        'responsabilidades',
+        'escolaridad_detectada',
+        'experiencia_detectada',
+        'ingles_detectado',
+        'software_detectado',
         'archivo_original_path',
+        'texto_original',
         'activo',
-        'raw_text',
     ];
 
     protected $casts = [
         'activo' => 'boolean',
     ];
-
-    public function responsabilidades(): HasMany
-    {
-        return $this->hasMany(PerfilPuestoResponsabilidad::class, 'perfil_puesto_id')
-            ->orderBy('orden');
-    }
-
-    public function scopeActivos($query)
-    {
-        return $query->where('activo', true);
-    }
 }

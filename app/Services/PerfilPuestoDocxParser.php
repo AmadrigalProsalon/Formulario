@@ -3,306 +3,316 @@
 namespace App\Services;
 
 use Illuminate\Support\Str;
-use PhpOffice\PhpWord\Element\Cell;
-use PhpOffice\PhpWord\Element\Row;
-use PhpOffice\PhpWord\Element\Table;
-use PhpOffice\PhpWord\IOFactory;
+use RuntimeException;
+use ZipArchive;
 
 class PerfilPuestoDocxParser
 {
-    public function parse(string $absolutePath, ?string $originalName = null): array
+    public function parse(string $path): array
     {
-        $phpWord = IOFactory::load($absolutePath);
+        $texto = $this->normalizarTexto($this->extraerTextoDocx($path));
 
-        $parts = [];
-        foreach ($phpWord->getSections() as $section) {
-            foreach ($section->getElements() as $element) {
-                $txt = $this->extractElementText($element);
-                if (trim($txt) !== '') {
-                    $parts[] = $txt;
-                }
-            }
-        }
+        $nombrePuesto = $this->extraerNombrePuesto($texto, $path);
 
-        $rawText = $this->normalizeText(implode("\n", $parts));
-
-        $nombrePuesto = $this->matchFirst($rawText, [
-            '/Descriptivo\s+de\s+Puesto\s+(.+?)\s+Código/isu',
-            '/Descriptivo\s+de\s+Puesto\s+(.+?)\s+Contenido/isu',
-        ]);
-
-        if (! $nombrePuesto && $originalName) {
-            $nombrePuesto = Str::of(pathinfo($originalName, PATHINFO_FILENAME))
-                ->replace(['_', '-'], ' ')
-                ->title()
-                ->toString();
-        }
-
-        $area = $this->matchFirst($rawText, [
-            '/Área\/Departamento\s+(.+?)\s+Puesto\s+al\s+que\s+reporta/isu',
-            '/Area\/Departamento\s+(.+?)\s+Puesto\s+al\s+que\s+reporta/isu',
-        ]);
-
-        $puestoReporta = $this->matchFirst($rawText, [
-            '/Puesto\s+al\s+que\s+reporta\s+(.+?)\s+2\.\s*Descripción/isu',
-            '/Puesto\s+al\s+que\s+reporta\s+(.+?)\s+Descripción\s+del\s+Puesto/isu',
-        ]);
-
-        $organizacion = $this->matchFirst($rawText, [
-            '/Organización\s+(.+?)\s+Área\/Departamento/isu',
-            '/Organizacion\s+(.+?)\s+Area\/Departamento/isu',
-        ]);
-
-        $fecha = $this->matchFirst($rawText, [
-            '/Fecha\s+de\s+Elaboración\s+(.+?)\s+Contenido/isu',
-            '/Fecha\s+de\s+Elaboracion\s+(.+?)\s+Contenido/isu',
-            '/(\d{1,2}\/[A-Za-zÁÉÍÓÚáéíóúñÑ]{3,}\/?\d{4})/u',
-        ]);
-
-        $version = $this->matchFirst($rawText, [
-            '/Versión\s+(.+?)\s+Fecha\s+de\s+Elaboración/isu',
-            '/Version\s+(.+?)\s+Fecha\s+de\s+Elaboracion/isu',
-        ]);
-
-        $descripcion = $this->section($rawText, [
-            '2. Descripción del Puesto',
-            '2. Descripcion del Puesto',
+        $requerimientos = $this->extraerSeccion($texto, [
+            '4\\.?\\s*Requerimientos\\s+M[ií]nimos',
+            'Requerimientos\\s+M[ií]nimos',
         ], [
-            '3. Objetivo de Puesto',
-            '3. Objetivo del Puesto',
+            '5\\.?\\s*Aptitudes',
+            '5\\.1',
         ]);
 
-        $objetivo = $this->section($rawText, [
-            '3. Objetivo de Puesto',
-            '3. Objetivo del Puesto',
+        $cualidades = $this->extraerSeccion($texto, [
+            '5\\.1\\s*Cualidades',
+            'Cualidades',
         ], [
-            '4. Requerimientos Mínimos',
-            '4. Requerimientos Minimos',
+            '5\\.2\\s*Habilidades',
+            'Habilidades',
         ]);
 
-        $requerimientos = $this->section($rawText, [
-            '4. Requerimientos Mínimos',
-            '4. Requerimientos Minimos',
+        $habilidades = $this->extraerSeccion($texto, [
+            '5\\.2\\s*Habilidades',
+            'Habilidades',
         ], [
-            '5. Aptitudes',
+            '6\\.?\\s*Responsabilidades\\s+y\\s+Actividades',
+            'Responsabilidades\\s+y\\s+Actividades',
         ]);
 
-        $cualidades = $this->section($rawText, [
-            '5.1 Cualidades',
-            '5.1: Cualidades',
-            '5.1 CUALIDADES',
+        $responsabilidades = $this->extraerSeccion($texto, [
+            '6\\.?\\s*Responsabilidades\\s+y\\s+Actividades',
+            'Responsabilidades\\s+y\\s+Actividades',
         ], [
-            '5.2 Habilidades',
-            '5.2 HABILIDADES',
+            '7\\.?\\s*Modificaciones',
+            'Modificaciones',
+            '8\\.?\\s*Lista\\s+de\\s+Distribuci[oó]n',
         ]);
 
-        $habilidades = $this->section($rawText, [
-            '5.2 Habilidades',
-            '5.2 HABILIDADES',
+        $objetivo = $this->extraerSeccion($texto, [
+            '3\\.?\\s*Objetivo\\s+(?:de|del)\\s+Puesto',
+            'Objetivo\\s+(?:de|del)\\s+Puesto',
         ], [
-            '6. Responsabilidades y Actividades',
-            '6. Responsabilidades',
+            '4\\.?\\s*Requerimientos\\s+M[ií]nimos',
+            'Requerimientos\\s+M[ií]nimos',
         ]);
 
-        $responsabilidades = $this->section($rawText, [
-            '6. Responsabilidades y Actividades',
-            '6. Responsabilidades',
+        $descripcion = $this->extraerSeccion($texto, [
+            '2\\.?\\s*Descripci[oó]n\\s+del\\s+Puesto',
+            'Descripci[oó]n\\s+del\\s+Puesto',
         ], [
-            '7. Modificaciones',
-            '8. Lista de Distribución',
+            '3\\.?\\s*Objetivo\\s+(?:de|del)\\s+Puesto',
+            'Objetivo\\s+(?:de|del)\\s+Puesto',
         ]);
 
         return [
-            'nombre_puesto' => $this->cleanValue($nombrePuesto ?: 'Perfil sin nombre'),
-            'codigo' => $this->cleanValue($this->matchFirst($rawText, ['/Código\s+(.+?)\s+Versión/isu'])),
-            'version' => $this->cleanValue($version),
-            'fecha_elaboracion' => $this->cleanValue($fecha),
-            'organizacion' => $this->cleanValue($organizacion),
-            'area_departamento' => $this->cleanValue($area),
-            'puesto_reporta' => $this->cleanValue($puestoReporta),
-            'descripcion_puesto' => $this->cleanTextBlock($descripcion),
-            'objetivo_puesto' => $this->cleanTextBlock($objetivo),
-            'requerimientos_minimos' => $this->cleanTextBlock($requerimientos),
-            'cualidades' => $this->cleanTextBlock($cualidades),
-            'habilidades' => $this->cleanTextBlock($habilidades),
-            'responsabilidades_text' => $this->cleanTextBlock($responsabilidades),
-            'raw_text' => $rawText,
-            'responsabilidades' => $this->splitResponsabilidades($responsabilidades),
-            'nivel_ingles_sugerido' => $this->inferirNivelIngles($requerimientos),
-            'anios_experiencia_sugeridos' => $this->inferirAniosExperiencia($requerimientos),
+            'nombre_puesto' => $nombrePuesto,
+            'codigo' => $this->extraerValorTablaFlexible($texto, 'Código'),
+            'version' => $this->extraerValorTablaFlexible($texto, 'Versión') ?: $this->extraerVersion($texto),
+            'fecha_elaboracion' => $this->extraerValorTablaFlexible($texto, 'Fecha de Elaboración') ?: $this->extraerFecha($texto),
+            'organizacion' => $this->extraerValorTablaFlexible($texto, 'Organización'),
+            'area_departamento' => $this->extraerValorTablaFlexible($texto, 'Área/Departamento'),
+            'puesto_reporta' => $this->extraerValorTablaFlexible($texto, 'Puesto al que reporta'),
+            'descripcion_puesto' => $descripcion,
+            'objetivo_puesto' => $objetivo,
+            'requerimientos_minimos' => $requerimientos,
+            'cualidades' => $cualidades,
+            'habilidades' => $habilidades,
+            'responsabilidades' => $responsabilidades,
+            'escolaridad_detectada' => $this->extraerLineaPorClave($requerimientos, 'Educación'),
+            'experiencia_detectada' => $this->extraerLineaPorClave($requerimientos, 'Experiencia'),
+            'ingles_detectado' => $this->normalizarNivelIngles($this->extraerLineaPorClave($requerimientos, 'Inglés')),
+            'software_detectado' => $this->extraerSoftware($requerimientos),
+            'texto_original' => $texto,
         ];
     }
 
-    private function extractElementText($element): string
+    private function extraerTextoDocx(string $path): string
     {
-        if ($element instanceof Table) {
-            $rows = [];
-            foreach ($element->getRows() as $row) {
-                if ($row instanceof Row) {
-                    $cells = [];
-                    foreach ($row->getCells() as $cell) {
-                        if ($cell instanceof Cell) {
-                            $cellParts = [];
-                            foreach ($cell->getElements() as $cellElement) {
-                                $cellParts[] = $this->extractElementText($cellElement);
-                            }
-                            $cells[] = trim(implode(' ', array_filter($cellParts)));
-                        }
+        if (! file_exists($path)) {
+            throw new RuntimeException("El archivo DOCX no existe: {$path}");
+        }
+
+        $zip = new ZipArchive();
+
+        if ($zip->open($path) !== true) {
+            throw new RuntimeException('No se pudo abrir el archivo DOCX.');
+        }
+
+        $texto = '';
+        $archivos = ['word/document.xml'];
+
+        for ($i = 0; $i < $zip->numFiles; $i++) {
+            $nombre = $zip->getNameIndex($i);
+
+            if (str_starts_with($nombre, 'word/header') || str_starts_with($nombre, 'word/footer')) {
+                $archivos[] = $nombre;
+            }
+        }
+
+        foreach (array_unique($archivos) as $archivo) {
+            $xml = $zip->getFromName($archivo);
+
+            if (! $xml) {
+                continue;
+            }
+
+            $xml = preg_replace('/<w:tab\\s*\\/>/i', ' ', $xml);
+            $xml = preg_replace('/<w:br\\s*\\/>/i', "\n", $xml);
+            $xml = preg_replace('/<\\/w:tc>/i', "\t", $xml);
+            $xml = preg_replace('/<\\/w:tr>/i', "\n", $xml);
+            $xml = preg_replace('/<\\/w:p>/i', "\n", $xml);
+            $texto .= "\n" . strip_tags($xml);
+        }
+
+        $zip->close();
+
+        return html_entity_decode($texto, ENT_QUOTES | ENT_XML1, 'UTF-8');
+    }
+
+    private function normalizarTexto(string $texto): string
+    {
+        $texto = str_replace(["\xc2\xa0", "\t"], ' ', $texto);
+        $texto = preg_replace('/[ ]+/u', ' ', $texto);
+        $texto = preg_replace('/\R+/u', "\n", $texto);
+
+        return collect(explode("\n", $texto))
+            ->map(fn ($linea) => trim($linea))
+            ->filter()
+            ->values()
+            ->implode("\n");
+    }
+
+    private function extraerNombrePuesto(string $texto, string $path): string
+    {
+        if (preg_match('/Descriptivo\\s+de\\s+Puesto\\s*\\n(?P<puesto>.+?)(?:\\n|Código|Contenido)/isu', $texto, $m)) {
+            return trim($m['puesto']);
+        }
+
+        if (preg_match('/Descriptivo\\s+de\\s+Puesto\\s+(?P<puesto>.+?)(?:\\n|Código|Contenido)/isu', $texto, $m)) {
+            return trim($m['puesto']);
+        }
+
+        return Str::of(pathinfo($path, PATHINFO_FILENAME))->replace(['_', '-'], ' ')->title()->toString();
+    }
+
+    private function extraerSeccion(string $texto, array $inicios, array $finales): ?string
+    {
+        $inicioRegex = implode('|', $inicios);
+        $finalRegex = implode('|', $finales);
+
+        $patrones = [
+            '/(?:^|\\n)\\s*(?:' . $inicioRegex . ')\\s*\\n(?P<body>.*?)(?=\\n\\s*(?:' . $finalRegex . ')\\s*(?:\\n|$))/isu',
+            '/(?:^|\\n)\\s*(?:' . $inicioRegex . ')\\s*(?P<body>.*?)(?=\\n\\s*(?:' . $finalRegex . ')\\s*(?:\\n|$))/isu',
+        ];
+
+        foreach ($patrones as $patron) {
+            if (preg_match($patron, $texto, $m)) {
+                return $this->limpiarBloque($m['body']);
+            }
+        }
+
+        return null;
+    }
+
+    private function limpiarBloque(?string $texto): ?string
+    {
+        if (! $texto) {
+            return null;
+        }
+
+        $texto = collect(explode("\n", $texto))
+            ->map(fn ($linea) => trim($linea))
+            ->filter()
+            ->values()
+            ->implode("\n");
+
+        return $texto !== '' ? $texto : null;
+    }
+
+    private function extraerValorTablaFlexible(string $texto, string $etiqueta): ?string
+    {
+        $lineas = collect(explode("\n", $texto))->values();
+        $etiquetaNormalizada = Str::lower($this->sinAcentos($etiqueta));
+
+        foreach ($lineas as $i => $linea) {
+            $lineaNormalizada = Str::lower($this->sinAcentos($linea));
+
+            if ($lineaNormalizada === $etiquetaNormalizada || str_contains($lineaNormalizada, $etiquetaNormalizada)) {
+                for ($j = $i + 1; $j <= $i + 5 && $j < $lineas->count(); $j++) {
+                    $valor = trim((string) $lineas[$j]);
+
+                    if ($valor !== '' && ! $this->esEtiqueta($valor)) {
+                        return $valor;
                     }
-                    $rows[] = implode("\n", array_filter($cells));
                 }
             }
-            return implode("\n", array_filter($rows));
         }
 
-        if (method_exists($element, 'getElements')) {
-            $items = [];
-            foreach ($element->getElements() as $child) {
-                $items[] = $this->extractElementText($child);
-            }
-            return implode(' ', array_filter($items));
-        }
-
-        if (method_exists($element, 'getText')) {
-            $text = $element->getText();
-            if (is_string($text) || is_numeric($text)) {
-                return (string) $text;
-            }
-        }
-
-        return '';
-    }
-
-    private function normalizeText(string $text): string
-    {
-        $text = str_replace(["\r\n", "\r"], "\n", $text);
-        $text = html_entity_decode(strip_tags($text));
-        $text = preg_replace('/[\t ]+/', ' ', $text);
-        $text = preg_replace('/\n[ \t]+/', "\n", $text);
-        $text = preg_replace('/[ \t]+\n/', "\n", $text);
-        $text = preg_replace('/\n{3,}/', "\n\n", $text);
-        return trim($text);
-    }
-
-    private function matchFirst(string $text, array $patterns): ?string
-    {
-        foreach ($patterns as $pattern) {
-            if (preg_match($pattern, $text, $m)) {
-                return trim($m[1] ?? '');
-            }
-        }
         return null;
     }
 
-    private function section(string $text, array $startNeedles, array $endNeedles): string
+    private function esEtiqueta(string $valor): bool
     {
-        $lower = mb_strtolower($text);
-        $startPos = null;
-        $startLen = 0;
-
-        foreach ($startNeedles as $needle) {
-            $pos = mb_stripos($lower, mb_strtolower($needle));
-            if ($pos !== false && ($startPos === null || $pos < $startPos)) {
-                $startPos = $pos;
-                $startLen = mb_strlen($needle);
-            }
-        }
-
-        if ($startPos === null) {
-            return '';
-        }
-
-        $contentStart = $startPos + $startLen;
-        $endPos = null;
-
-        foreach ($endNeedles as $needle) {
-            $pos = mb_stripos($lower, mb_strtolower($needle), $contentStart);
-            if ($pos !== false && ($endPos === null || $pos < $endPos)) {
-                $endPos = $pos;
-            }
-        }
-
-        if ($endPos === null) {
-            return trim(mb_substr($text, $contentStart));
-        }
-
-        return trim(mb_substr($text, $contentStart, $endPos - $contentStart));
-    }
-
-    private function cleanValue(?string $value): ?string
-    {
-        if ($value === null) {
-            return null;
-        }
-        $value = preg_replace('/\s+/', ' ', trim($value));
-        $value = trim($value, " \t\n\r\0\x0B:.-");
-        return $value !== '' ? $value : null;
-    }
-
-    private function cleanTextBlock(?string $value): ?string
-    {
-        if (! $value) {
-            return null;
-        }
-        $value = preg_replace('/\n{3,}/', "\n\n", trim($value));
-        $value = trim($value, " \t\n\r\0\x0B:");
-        return $value !== '' ? $value : null;
-    }
-
-    private function splitResponsabilidades(?string $text): array
-    {
-        if (! $text) {
-            return [];
-        }
-
-        $knownTitles = [
-            'Atención de Consultas',
-            'Resolución de Problemas',
-            'Registro de Interacciones',
-            'Seguimiento',
-            'Mejora Continua',
-            'Cumplimiento de Procedimientos',
-            'Colaboración en Equipo',
+        $valor = Str::lower($this->sinAcentos(trim($valor)));
+        $etiquetas = [
+            'codigo',
+            'version',
+            'fecha de elaboracion',
+            'organizacion',
+            'area/departamento',
+            'puesto al que reporta',
+            'puesto',
+            'firma',
         ];
 
-        $items = [];
-        foreach ($knownTitles as $index => $title) {
-            $pattern = '/' . preg_quote($title, '/') . '\s+(.+?)(?=' . implode('|', array_map(fn ($t) => preg_quote($t, '/'), array_slice($knownTitles, $index + 1))) . '|$)/isu';
-            if (preg_match($pattern, $text, $m)) {
-                $items[] = [
-                    'titulo' => $title,
-                    'descripcion' => trim($m[1]),
-                    'orden' => $index + 1,
-                ];
+        return in_array($valor, $etiquetas, true);
+    }
+
+    private function extraerVersion(string $texto): ?string
+    {
+        if (preg_match('/\\n(?P<version>\\d{2})\\n\\d{1,2}\\/[A-Za-zÁÉÍÓÚáéíóú]+\\/\\d{4}/u', $texto, $m)) {
+            return trim($m['version']);
+        }
+
+        return null;
+    }
+
+    private function extraerFecha(string $texto): ?string
+    {
+        if (preg_match('/(?P<fecha>\\d{1,2}\\/[A-Za-zÁÉÍÓÚáéíóú]+\\/\\d{4})/u', $texto, $m)) {
+            return trim($m['fecha']);
+        }
+
+        return null;
+    }
+
+    private function extraerLineaPorClave(?string $texto, string $clave): ?string
+    {
+        if (! $texto) {
+            return null;
+        }
+
+        if (preg_match('/' . preg_quote($clave, '/') . '\\s*:\\s*(?P<valor>.+?)(?:\\n|$)/iu', $texto, $m)) {
+            return trim($m['valor']);
+        }
+
+        foreach (explode("\n", $texto) as $linea) {
+            if (str_contains(Str::lower($this->sinAcentos($linea)), Str::lower($this->sinAcentos($clave)))) {
+                return trim($linea);
             }
         }
 
-        if (! empty($items)) {
-            return $items;
+        return null;
+    }
+
+    private function extraerSoftware(?string $texto): ?string
+    {
+        if (! $texto) {
+            return null;
         }
 
-        return [[
-            'titulo' => 'Responsabilidades y actividades',
-            'descripcion' => trim($text),
-            'orden' => 1,
-        ]];
+        $lineas = collect(explode("\n", $texto))
+            ->filter(function ($linea) {
+                $linea = Str::lower($this->sinAcentos($linea));
+
+                return str_contains($linea, 'crm')
+                    || str_contains($linea, 'sistema')
+                    || str_contains($linea, 'herramienta')
+                    || str_contains($linea, 'software');
+            })
+            ->values()
+            ->toArray();
+
+        return count($lineas) ? implode("\n", $lineas) : null;
     }
 
-    private function inferirNivelIngles(?string $text): ?string
+    private function normalizarNivelIngles(?string $valor): ?string
     {
-        $t = mb_strtolower($text ?? '');
-        if (str_contains($t, 'avanzado')) return 'Avanzado';
-        if (str_contains($t, 'intermedio')) return 'Intermedio';
-        if (str_contains($t, 'básico') || str_contains($t, 'basico')) return 'Básico';
+        if (! $valor) {
+            return null;
+        }
+
+        $v = Str::lower($this->sinAcentos($valor));
+
+        if (str_contains($v, 'avanzado')) {
+            return 'Avanzado';
+        }
+
+        if (str_contains($v, 'intermedio')) {
+            return 'Intermedio';
+        }
+
+        if (str_contains($v, 'basico')) {
+            return 'Básico';
+        }
+
         return null;
     }
 
-    private function inferirAniosExperiencia(?string $text): ?string
+    private function sinAcentos(string $texto): string
     {
-        $t = mb_strtolower($text ?? '');
-        if (preg_match('/mínimo\s*2|minimo\s*2|2\s*años|2\s+años/u', $t)) return '1 a 2 años';
-        if (preg_match('/3\s*a\s*5|3\s+años|5\s+años/u', $t)) return '3 a 5 años';
-        if (preg_match('/1\s*año|1\s+ano|1\s+años/u', $t)) return '0 a 1 año';
-        return null;
+        return strtr($texto, [
+            'Á' => 'A', 'É' => 'E', 'Í' => 'I', 'Ó' => 'O', 'Ú' => 'U', 'Ñ' => 'N',
+            'á' => 'a', 'é' => 'e', 'í' => 'i', 'ó' => 'o', 'ú' => 'u', 'ñ' => 'n',
+        ]);
     }
 }
