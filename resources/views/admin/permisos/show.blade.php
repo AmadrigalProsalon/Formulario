@@ -5,9 +5,12 @@
 @section('page_description', 'Control de formato físico y recepción RH.')
 
 @section('content')
-    <div class="mb-5 flex gap-2">
+    <div class="mb-5 flex flex-wrap gap-2">
         <a href="{{ route('admin.permisos.index') }}" class="rounded-xl bg-slate-200 px-4 py-2 hover:bg-slate-300">Volver</a>
         <a href="{{ route('admin.permisos.descargar', $permiso) }}" class="rounded-xl bg-blue-600 text-white px-4 py-2 hover:bg-blue-700">Descargar documento</a>
+        @if($permiso->archivo_firmado_path)
+            <a href="{{ route('admin.permisos.formato_firmado.descargar', $permiso) }}" class="rounded-xl bg-green-600 text-white px-4 py-2 hover:bg-green-700">Descargar firmado</a>
+        @endif
         <form method="POST" action="{{ route('admin.permisos.reenviar', $permiso) }}">@csrf<button class="rounded-xl bg-slate-950 text-white px-4 py-2 hover:bg-slate-800">Reenviar documento</button></form>
     </div>
 
@@ -23,6 +26,8 @@
                 <div><span class="text-slate-500">Días</span><div class="font-semibold">{{ $permiso->dias_solicitados }}</div></div>
                 <div><span class="text-slate-500">Fecha inicio</span><div class="font-semibold">{{ $permiso->fecha_inicio?->format('d/m/Y') }}</div></div>
                 <div><span class="text-slate-500">Fecha fin</span><div class="font-semibold">{{ $permiso->fecha_fin?->format('d/m/Y') }}</div></div>
+                <div><span class="text-slate-500">Estatus</span><div class="font-semibold">{{ str_replace('_', ' ', $permiso->estatus) }}</div></div>
+                <div><span class="text-slate-500">Documento enviado</span><div class="font-semibold">{{ $permiso->documento_enviado_at?->format('d/m/Y H:i') ?? 'No enviado' }}</div></div>
                 <div class="md:col-span-2"><span class="text-slate-500">Motivo</span><div class="font-semibold">{{ $permiso->motivo ?: 'Sin motivo' }}</div></div>
             </div>
         </div>
@@ -53,6 +58,48 @@
                 <textarea name="observaciones_rh" rows="2" placeholder="Motivo de cancelación opcional" class="w-full rounded-xl border-slate-300 mb-2">{{ $permiso->observaciones_rh }}</textarea>
                 <button class="w-full rounded-xl bg-red-600 text-white px-4 py-2 hover:bg-red-700">Cancelar solicitud</button>
             </form>
+        </div>
+    </div>
+
+    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6 mt-6">
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 class="text-xl font-bold mb-4">Formato firmado escaneado</h2>
+            @if($permiso->archivo_firmado_path)
+                <div class="rounded-xl bg-green-50 border border-green-200 text-green-800 p-4 mb-4 text-sm">
+                    <div><strong>Archivo:</strong> {{ $permiso->archivo_firmado_original }}</div>
+                    <div><strong>Subido:</strong> {{ $permiso->archivo_firmado_at?->format('d/m/Y H:i') }}</div>
+                    <div><strong>Por:</strong> {{ $permiso->archivoFirmadoPor?->name ?? 'Sistema' }}</div>
+                </div>
+                <a href="{{ route('admin.permisos.formato_firmado.descargar', $permiso) }}" class="inline-flex rounded-xl bg-green-600 text-white px-4 py-2 hover:bg-green-700">Descargar formato firmado</a>
+            @else
+                <p class="text-sm text-slate-500 mb-4">Aún no se ha subido el documento firmado físicamente.</p>
+            @endif
+
+            <form method="POST" action="{{ route('admin.permisos.formato_firmado.subir', $permiso) }}" enctype="multipart/form-data" class="mt-5 space-y-3">
+                @csrf
+                <div>
+                    <label class="block text-sm font-semibold mb-1">Subir archivo firmado</label>
+                    <input type="file" name="archivo_firmado" accept=".pdf,.jpg,.jpeg,.png,.doc,.docx" class="w-full rounded-xl border border-slate-300 p-3" required>
+                </div>
+                <button class="rounded-xl bg-slate-950 text-white px-4 py-2 hover:bg-slate-800">Guardar formato firmado</button>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6">
+            <h2 class="text-xl font-bold mb-4">Historial</h2>
+            <div class="space-y-3">
+                @forelse($permiso->historial as $item)
+                    <div class="rounded-xl border border-slate-200 p-3">
+                        <div class="font-semibold">{{ str_replace('_', ' ', ucfirst($item->accion)) }}</div>
+                        <div class="text-sm text-slate-500">{{ $item->created_at?->format('d/m/Y H:i') }} · {{ $item->usuario?->name ?? 'Sistema' }}</div>
+                        @if($item->descripcion)
+                            <div class="text-sm mt-1">{{ $item->descripcion }}</div>
+                        @endif
+                    </div>
+                @empty
+                    <div class="text-sm text-slate-500">Sin historial registrado.</div>
+                @endforelse
+            </div>
         </div>
     </div>
 

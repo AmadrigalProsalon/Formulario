@@ -19,6 +19,10 @@ class PermisoSolicitud extends Model
         'motivo',
         'estatus',
         'documento_path',
+        'archivo_firmado_path',
+        'archivo_firmado_original',
+        'archivo_firmado_at',
+        'archivo_firmado_por',
         'documento_enviado_at',
         'formato_recibido',
         'formato_recibido_at',
@@ -32,6 +36,7 @@ class PermisoSolicitud extends Model
         'fecha_inicio' => 'date',
         'fecha_fin' => 'date',
         'documento_enviado_at' => 'datetime',
+        'archivo_firmado_at' => 'datetime',
         'formato_recibido' => 'boolean',
         'formato_recibido_at' => 'datetime',
         'cancelado_at' => 'datetime',
@@ -61,6 +66,16 @@ class PermisoSolicitud extends Model
     public function recibidoPor()
     {
         return $this->belongsTo(User::class, 'formato_recibido_por');
+    }
+
+    public function archivoFirmadoPor()
+    {
+        return $this->belongsTo(User::class, 'archivo_firmado_por');
+    }
+
+    public function historial()
+    {
+        return $this->hasMany(PermisoHistorial::class, 'permiso_solicitud_id')->latest();
     }
 
     public function scopeActivas($query)

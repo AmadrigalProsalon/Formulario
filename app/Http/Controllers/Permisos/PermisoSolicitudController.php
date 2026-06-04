@@ -7,6 +7,7 @@ use App\Mail\PermisoDocumentoFisicoMail;
 use App\Models\Area;
 use App\Models\Empleado;
 use App\Models\PermisoSolicitud;
+use App\Models\PermisoHistorial;
 use App\Models\TipoPermiso;
 use App\Services\Permisos\PermisoDocumentoService;
 use App\Services\Permisos\PermisoSaldoService;
@@ -77,6 +78,12 @@ class PermisoSolicitudController extends Controller
                 ]);
             });
 
+            PermisoHistorial::create([
+                'permiso_solicitud_id' => $solicitud->id,
+                'accion' => 'solicitud_creada',
+                'descripcion' => 'El colaborador registró una nueva solicitud.',
+            ]);
+
             $documentoRelativePath = $documentoService->generarDocumento($solicitud);
             $documentoAbsolutePath = $documentoService->absolutePath($documentoRelativePath);
 
@@ -85,6 +92,12 @@ class PermisoSolicitudController extends Controller
             $solicitud->update([
                 'estatus' => 'formato_enviado',
                 'documento_enviado_at' => now(),
+            ]);
+
+            PermisoHistorial::create([
+                'permiso_solicitud_id' => $solicitud->id,
+                'accion' => 'documento_enviado',
+                'descripcion' => 'El formato fue enviado al colaborador, líder y RH.',
             ]);
 
             return redirect()->route('permisos.solicitud.gracias')

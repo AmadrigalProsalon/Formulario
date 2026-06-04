@@ -13,6 +13,7 @@ RUN apt-get update && apt-get install -y \
     libfreetype6-dev \
     libxml2-dev \
     libonig-dev \
+    libicu-dev \
     default-mysql-client \
     nodejs \
     npm \
@@ -27,6 +28,7 @@ RUN apt-get update && apt-get install -y \
         bcmath \
         gd \
         xml \
+        intl \
     && apt-get clean \
     && rm -rf /var/lib/apt/lists/*
 
@@ -35,10 +37,12 @@ COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 COPY . .
 
 RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
-
 RUN npm install && npm run build
 
 RUN mkdir -p storage/logs \
+    storage/app \
+    storage/app/public \
+    storage/app/templates \
     storage/framework/cache \
     storage/framework/sessions \
     storage/framework/views \
@@ -48,7 +52,6 @@ COPY docker/php/local.ini /usr/local/etc/php/conf.d/local.ini
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 
 RUN chmod +x /usr/local/bin/entrypoint.sh
-
 RUN chown -R www-data:www-data /var/www/html \
     && chmod -R 775 storage bootstrap/cache
 

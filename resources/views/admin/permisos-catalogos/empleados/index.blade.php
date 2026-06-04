@@ -5,6 +5,15 @@
 @section('page_description', 'Filtra por departamento para editar empleados sin cargar todos de golpe.')
 
 @section('content')
+    <div class="mb-5 flex flex-wrap gap-2">
+        <a href="{{ route('admin.permisos.empleados.importar') }}" class="rounded-xl bg-blue-600 text-white px-4 py-2 hover:bg-blue-700">
+            Importar empleados
+        </a>
+        <a href="{{ route('admin.permisos.calendario') }}" class="rounded-xl bg-slate-200 text-slate-800 px-4 py-2 hover:bg-slate-300">
+            Calendario de ausencias
+        </a>
+    </div>
+
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5 mb-6">
         <form method="GET" action="{{ route('admin.permisos.empleados.index') }}" class="grid grid-cols-1 md:grid-cols-5 gap-4">
             <div>
@@ -39,9 +48,12 @@
     </div>
 
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-        <div class="p-5 border-b border-slate-200">
-            <h2 class="text-lg font-bold">Listado de empleados</h2>
-            <p class="text-sm text-slate-500">Mostrando {{ $empleados->count() }} de {{ $empleados->total() }} registros.</p>
+        <div class="p-5 border-b border-slate-200 flex items-center justify-between gap-3">
+            <div>
+                <h2 class="text-lg font-bold">Listado de empleados</h2>
+                <p class="text-sm text-slate-500">Mostrando {{ $empleados->count() }} de {{ $empleados->total() }} registros.</p>
+            </div>
+            <a href="{{ route('admin.permisos.empleados.importar') }}" class="rounded-xl bg-blue-600 text-white px-4 py-2 hover:bg-blue-700">Importar</a>
         </div>
         <div class="overflow-x-auto">
             <table class="w-full text-sm">

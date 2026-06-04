@@ -17,7 +17,8 @@
             <nav class="flex-1 p-4 space-y-2 overflow-y-auto">
                 <a href="{{ route('admin.dashboard') }}" class="block px-4 py-3 rounded-xl transition {{ request()->routeIs('admin.dashboard') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Inicio</a>
                 <a href="{{ route('admin.formularios.index') }}" class="block px-4 py-3 rounded-xl transition {{ request()->routeIs('admin.formularios.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Formularios</a>
-                <a href="{{ route('admin.permisos.index') }}" class="block px-4 py-3 rounded-xl transition {{ request()->routeIs('admin.permisos.*') && !request()->routeIs('admin.permisos.empleados.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Permisos y ausencias</a>
+                <a href="{{ route('admin.permisos.index') }}" class="block px-4 py-3 rounded-xl transition {{ request()->routeIs('admin.permisos.index') || request()->routeIs('admin.permisos.show') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Permisos y ausencias</a>
+                <a href="{{ route('admin.permisos.calendario') }}" class="block px-4 py-3 rounded-xl transition {{ request()->routeIs('admin.permisos.calendario') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Calendario ausencias</a>
                 <a href="{{ route('admin.permisos.empleados.index') }}" class="block px-4 py-3 rounded-xl transition {{ request()->routeIs('admin.permisos.empleados.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Empleados</a>
                 <a href="{{ route('admin.usuarios.index') }}" class="block px-4 py-3 rounded-xl transition {{ request()->routeIs('admin.usuarios.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Usuarios</a>
                 <a href="{{ route('admin.respuestas.index') }}" class="block px-4 py-3 rounded-xl transition {{ request()->routeIs('admin.respuestas.*') || request()->routeIs('admin.respuesta.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Respuestas</a>
@@ -49,7 +50,8 @@
 
             <div class="md:hidden bg-slate-950 text-white p-3 flex gap-2 overflow-x-auto">
                 <a href="{{ route('admin.dashboard') }}" class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.dashboard') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">Inicio</a>
-                <a href="{{ route('admin.permisos.index') }}" class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.permisos.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">Permisos</a>
+                <a href="{{ route('admin.permisos.index') }}" class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.permisos.index') || request()->routeIs('admin.permisos.show') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">Permisos</a>
+                <a href="{{ route('admin.permisos.calendario') }}" class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.permisos.calendario') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">Calendario</a>
                 <a href="{{ route('admin.permisos.empleados.index') }}" class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.permisos.empleados.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">Empleados</a>
                 <a href="{{ route('admin.formularios.index') }}" class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.formularios.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">Formularios</a>
                 <a href="{{ route('admin.usuarios.index') }}" class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.usuarios.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">Usuarios</a>

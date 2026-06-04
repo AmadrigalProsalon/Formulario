@@ -3,6 +3,7 @@ services:
     build:
       context: .
       dockerfile: Dockerfile
+    image: formulario-app
     container_name: formulario_rh_app
     restart: unless-stopped
     working_dir: /var/www/html
@@ -35,10 +36,11 @@ services:
     container_name: formulario_rh_db
     restart: unless-stopped
     environment:
-      MYSQL_DATABASE: formulario_rh
-      MYSQL_ROOT_PASSWORD: Tamalito26
-      MYSQL_USER: formulario_user
-      MYSQL_PASSWORD: Tamalito26
+      MYSQL_DATABASE: ${DB_DATABASE:-formulario_rh}
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-root_password_cambiar}
+      MYSQL_USER: ${DB_USERNAME:-formulario_user}
+      MYSQL_PASSWORD: ${DB_PASSWORD:-formulario_password_cambiar}
+    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
     volumes:
       - formulario_rh_mysql:/var/lib/mysql
     networks:
