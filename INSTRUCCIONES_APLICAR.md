@@ -1,47 +1,30 @@
-# Parche: Documentos DOCX y envío a RH para Permisos / Ausencias
+# Parche integrado — Permisos, Ausencias, Firmas y Documentos RH
 
-Este parche agrega generación de documento Word para las solicitudes de permisos / ausencias y envío automático a RH.
+Este ZIP ya viene integrado para que no tengas que editar rutas ni pegar código manualmente.
 
-## Qué agrega
+Incluye:
 
-- Generación de DOCX inicial cuando se crea una solicitud.
-- Envío del formato inicial al colaborador, líder y RH.
-- Generación de DOCX firmado cuando ya firmaron colaborador y líder.
-- Envío automático del documento firmado al correo RH.
-- Rutas admin para descargar y reenviar documentos.
-- Plantilla Word de ejemplo con placeholders.
+- Módulo general de Permisos y Ausencias.
+- Vacaciones, permisos con goce, permisos sin goce, permiso médico y otros.
+- Áreas, empleados, líderes y tipos de permiso.
+- Firma digital interna con token.
+- Validación para no permitir solicitudes cruzadas en las mismas fechas para el mismo empleado.
+- Validación de saldo solo cuando el tipo de permiso requiere saldo, como vacaciones.
+- Generación automática de DOCX inicial.
+- Envío del DOCX inicial al colaborador, líder y RH.
+- Generación automática de DOCX firmado cuando firma colaborador y líder.
+- Envío automático del DOCX firmado a RH.
+- Descarga y reenvío de documentos desde el panel RH.
+- `routes/web.php` completo ya con los requires necesarios.
+- `routes/permisos.php` y `routes/permisos_documentos.php` incluidos.
+- Plantilla Word incluida en `resources/templates/formato_permiso.docx`.
 
-## 1. Copiar archivos
+## Cómo aplicar
 
-Copia el contenido del ZIP encima del proyecto Laravel.
-
-## 2. Agregar variables al `.env`
-
-```env
-PERMISOS_RH_EMAIL=rh@prosalon.mx
-PERMISOS_TEMPLATE_PATH=/var/www/html/storage/app/templates/formato_permiso.docx
-PERMISOS_DOCUMENTOS_DISK=public
-```
-
-Ajusta `PERMISOS_RH_EMAIL` al correo real de RH.
-
-Si quieres usar la plantilla de ejemplo incluida, cópiala dentro del contenedor o en el proyecto como:
-
-```text
-storage/app/templates/formato_permiso.docx
-```
-
-## 3. Agregar rutas
-
-En `routes/web.php`, al final del archivo agrega:
-
-```php
-require __DIR__ . '/permisos_documentos.php';
-```
-
-Debe quedar junto con los otros `require` de rutas.
-
-## 4. Ejecutar comandos
+1. Descomprime el ZIP.
+2. Copia las carpetas encima del proyecto Laravel.
+3. No necesitas agregar manualmente `require __DIR__ . '/permisos.php';` ni `require __DIR__ . '/permisos_documentos.php';` porque el `routes/web.php` incluido ya los trae.
+4. Ejecuta:
 
 ```bash
 cd ~/Formulario
@@ -56,144 +39,94 @@ docker exec -it formulario_rh_app php artisan view:clear
 docker exec -it formulario_rh_app php artisan config:clear
 ```
 
-## 5. Integrar envío del documento inicial
+## Correo RH
 
-Busca el controlador donde se guarda la solicitud de permiso. Normalmente puede ser:
+El sistema busca el correo RH en este orden:
+
+1. `PERMISOS_RH_EMAIL`
+2. `RH_FORM_MAIL_TO`
+3. `rh@prosalon.mx` como valor de respaldo
+
+Si ya tienes `RH_FORM_MAIL_TO` en `.env`, no necesitas agregar nada.
+
+Si quieres cambiarlo, agrega o ajusta:
+
+```env
+PERMISOS_RH_EMAIL=rh@prosalon.mx
+```
+
+## Plantilla DOCX
+
+El sistema ya incluye la plantilla en:
 
 ```text
-app/Http/Controllers/Permisos/PermisoSolicitudController.php
+resources/templates/formato_permiso.docx
 ```
 
-Después de crear la solicitud, agrega:
+Si quieres usar otra, puedes configurar:
 
-```php
-app(\App\Services\Permisos\PermisoDocumentoWorkflowService::class)
-    ->enviarDocumentoInicial($solicitud);
+```env
+PERMISOS_TEMPLATE_PATH=/var/www/html/resources/templates/formato_permiso.docx
 ```
 
-Ejemplo:
+Pero no es obligatorio.
 
-```php
-$solicitud = PermisoSolicitud::create($data);
+## URLs
 
-app(\App\Services\Permisos\PermisoDocumentoWorkflowService::class)
-    ->enviarDocumentoInicial($solicitud);
-```
-
-## 6. Integrar generación del documento firmado
-
-Busca el controlador donde se guarda la firma digital. Después de guardar la firma, agrega:
-
-```php
-app(\App\Services\Permisos\PermisoDocumentoWorkflowService::class)
-    ->procesarFirmasCompletas($solicitud);
-```
-
-Ejemplo:
-
-```php
-$firma->update([
-    'estatus' => 'firmado',
-    'firma_path' => $firmaPath,
-    'firmado_at' => now(),
-    'ip' => $request->ip(),
-    'user_agent' => $request->userAgent(),
-]);
-
-app(\App\Services\Permisos\PermisoDocumentoWorkflowService::class)
-    ->procesarFirmasCompletas($solicitud);
-```
-
-El servicio revisa si ya existen las dos firmas requeridas:
-
-- colaborador
-- lider
-
-Cuando ambas están firmadas, genera el documento final y lo envía a RH.
-
-## 7. Agregar botones en el panel RH
-
-En la vista donde muestras cada solicitud de permisos, puedes incluir este parcial:
-
-```blade
-@include('admin.permisos._documentos_botones', ['solicitud' => $solicitud])
-```
-
-Eso mostrará botones para:
-
-- Descargar formato inicial.
-- Reenviar formato inicial.
-- Descargar formato firmado.
-- Enviar firmado a RH.
-
-## 8. Placeholders disponibles en la plantilla Word
-
-La plantilla DOCX puede usar estos placeholders:
+Solicitud pública:
 
 ```text
-${folio}
-${tipo_permiso}
-${nombre_colaborador}
-${correo_colaborador}
-${area}
-${puesto}
-${lider}
-${correo_lider}
-${fecha_inicio}
-${fecha_fin}
-${dias_solicitados}
-${motivo}
-${fecha_solicitud}
-${estatus}
-${formato_recibido}
-${observaciones_rh}
-${firma_colaborador}
-${firma_lider}
+/permisos/solicitud
 ```
 
-Para firmas, usa en Word exactamente:
+Panel RH:
 
 ```text
-${firma_colaborador}
-${firma_lider}
+/admin/permisos
 ```
 
-Cuando el documento se genere con firmas, esos placeholders se reemplazarán por la imagen PNG de la firma.
-
-## 9. Rutas nuevas
+Empleados:
 
 ```text
-/admin/permisos/documentos/{solicitud}/inicial
-/admin/permisos/documentos/{solicitud}/firmado
-/admin/permisos/documentos/{solicitud}/reenviar-inicial
-/admin/permisos/documentos/{solicitud}/reenviar-firmado-rh
+/admin/permisos-catalogos/empleados
 ```
 
-## 10. Archivos generados
-
-Los documentos se guardan en:
+Áreas:
 
 ```text
-storage/app/public/permisos/documentos/solicitud_ID/
+/admin/permisos-catalogos/areas
 ```
 
-Ejemplo:
+Tipos de permiso:
 
 ```text
-storage/app/public/permisos/documentos/solicitud_25/formato_permiso_inicial_20260604_120000.docx
-storage/app/public/permisos/documentos/solicitud_25/formato_permiso_firmado_20260604_121500.docx
+/admin/permisos-catalogos/tipos
 ```
 
-## 11. Flujo final esperado
+Documentos por solicitud:
 
 ```text
-1. Colaborador llena solicitud.
-2. Sistema genera DOCX inicial.
-3. Sistema manda el DOCX a colaborador, líder y RH.
-4. Colaborador firma con token.
-5. Líder firma con token.
-6. Sistema genera DOCX firmado con ambas firmas.
-7. Sistema manda el DOCX firmado a RH.
-8. RH marca formato recibido / pendiente / con observaciones.
+/admin/permisos/{id}
 ```
 
+Desde el detalle de la solicitud puedes descargar o reenviar:
+
+- formato inicial;
+- formato firmado;
+- formato firmado a RH.
+
+## Flujo esperado
+
+1. RH registra áreas, líderes y empleados.
+2. El colaborador entra a `/permisos/solicitud`.
+3. Selecciona colaborador, tipo de permiso y fechas.
+4. Si el permiso requiere saldo, el sistema valida días disponibles.
+5. Si ya hay una solicitud activa cruzada para el mismo empleado, el sistema bloquea el envío.
+6. Se crea la solicitud.
+7. Se genera el formato DOCX inicial.
+8. Se manda el formato al colaborador, al líder y a RH.
+9. Colaborador firma con token.
+10. Líder firma con token.
+11. Cuando ambas firmas están completas, se genera el DOCX firmado.
+12. El DOCX firmado se envía automáticamente a RH.
+13. RH marca formato recibido, formato pendiente, con observaciones o cancelado.

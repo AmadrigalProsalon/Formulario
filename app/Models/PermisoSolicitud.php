@@ -22,6 +22,10 @@ class PermisoSolicitud extends Model
         'formato_recibido_at',
         'formato_recibido_por',
         'observaciones_rh',
+        'documento_inicial_path',
+        'documento_firmado_path',
+        'documento_inicial_enviado_at',
+        'documento_firmado_enviado_rh_at',
         'ip',
         'user_agent',
     ];
@@ -32,6 +36,8 @@ class PermisoSolicitud extends Model
         'dias_solicitados' => 'decimal:2',
         'formato_recibido' => 'boolean',
         'formato_recibido_at' => 'datetime',
+        'documento_inicial_enviado_at' => 'datetime',
+        'documento_firmado_enviado_rh_at' => 'datetime',
     ];
 
     public function tipoPermiso()
@@ -72,6 +78,20 @@ class PermisoSolicitud extends Model
     public function firmasPendientes()
     {
         return $this->firmas()->where('estatus', 'pendiente');
+    }
+
+    public static function existeCruceDeFechas(int $empleadoId, string $fechaInicio, string $fechaFin, ?int $ignorarSolicitudId = null): ?self
+    {
+        return self::where('empleado_id', $empleadoId)
+            ->when($ignorarSolicitudId, fn ($query) => $query->where('id', '!=', $ignorarSolicitudId))
+            ->whereNotIn('estatus', [
+                'cancelado',
+            ])
+            ->where(function ($query) use ($fechaInicio, $fechaFin) {
+                $query->whereDate('fecha_inicio', '<=', $fechaFin)
+                    ->whereDate('fecha_fin', '>=', $fechaInicio);
+            })
+            ->first();
     }
 
     public function getEstatusLabelAttribute(): string

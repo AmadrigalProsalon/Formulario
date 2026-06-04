@@ -37,7 +37,7 @@ Route::get('/gracias', function () {
 
 /*
 |--------------------------------------------------------------------------
-| RUTA DASHBOARD PARA BREEZE
+| DASHBOARD PARA BREEZE
 |--------------------------------------------------------------------------
 */
 
@@ -61,12 +61,6 @@ Route::middleware(['auth', 'admin'])
     ->group(function () {
         Route::get('/', [AdminController::class, 'dashboard'])->name('dashboard');
 
-        // Usuarios
-        Route::get('/usuarios', [AdminUserController::class, 'index'])->name('usuarios.index');
-        Route::post('/usuarios', [AdminUserController::class, 'store'])->name('usuarios.store');
-        Route::put('/usuarios/{user}', [AdminUserController::class, 'update'])->name('usuarios.update');
-        Route::delete('/usuarios/{user}', [AdminUserController::class, 'destroy'])->name('usuarios.destroy');
-
         // Formularios
         Route::get('/formularios', [FormularioController::class, 'index'])->name('formularios.index');
         Route::post('/formularios', [FormularioController::class, 'store'])->name('formularios.store');
@@ -74,6 +68,14 @@ Route::middleware(['auth', 'admin'])
         Route::delete('/formularios/{formulario}', [FormularioController::class, 'destroy'])->name('formularios.destroy');
         Route::post('/formularios/{formulario}/toggle', [FormularioController::class, 'toggle'])->name('formularios.toggle');
         Route::post('/formularios/{formulario}/default', [FormularioController::class, 'makeDefault'])->name('formularios.default');
+
+        // Usuarios
+        if (class_exists(AdminUserController::class)) {
+            Route::get('/usuarios', [AdminUserController::class, 'index'])->name('usuarios.index');
+            Route::post('/usuarios', [AdminUserController::class, 'store'])->name('usuarios.store');
+            Route::put('/usuarios/{user}', [AdminUserController::class, 'update'])->name('usuarios.update');
+            Route::delete('/usuarios/{user}', [AdminUserController::class, 'destroy'])->name('usuarios.destroy');
+        }
 
         // Respuestas
         Route::get('/respuestas', [AdminController::class, 'dashboard'])->name('respuestas.index');
@@ -102,7 +104,7 @@ Route::middleware(['auth', 'admin'])
 
         Route::post('/import-excel', [ExcelController::class, 'import'])->name('import.excel');
     });
-require __DIR__ . '/vacaciones.php';
+
 require __DIR__ . '/auth.php';
 require __DIR__ . '/permisos.php';
 require __DIR__ . '/permisos_documentos.php';

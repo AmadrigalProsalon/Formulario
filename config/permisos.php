@@ -7,17 +7,21 @@ return [
     |--------------------------------------------------------------------------
     | A este correo se enviará copia del formato inicial y el formato final
     | firmado cuando el colaborador y su líder hayan firmado.
+    |
+    | Si no configuras PERMISOS_RH_EMAIL, usa RH_FORM_MAIL_TO como respaldo.
     */
-    'rh_email' => env('PERMISOS_RH_EMAIL', env('RH_FORM_MAIL_TO')),
+    'rh_email' => env('PERMISOS_RH_EMAIL', env('RH_FORM_MAIL_TO', 'rh@prosalon.mx')),
 
     /*
     |--------------------------------------------------------------------------
     | Plantilla Word para permisos
     |--------------------------------------------------------------------------
-    | Puedes subir tu plantilla a storage/app/templates/formato_permiso.docx.
-    | Si no existe, el sistema generará un DOCX básico automáticamente.
+    | Por defecto usa resources/templates/formato_permiso.docx, que viene dentro
+    | de este parche. Así no necesitas agregar rutas manuales al .env.
+    |
+    | Si quieres usar otra plantilla, configura PERMISOS_TEMPLATE_PATH.
     */
-    'template_path' => env('PERMISOS_TEMPLATE_PATH', storage_path('app/templates/formato_permiso.docx')),
+    'template_path' => env('PERMISOS_TEMPLATE_PATH', base_path('resources/templates/formato_permiso.docx')),
 
     /*
     |--------------------------------------------------------------------------
@@ -27,18 +31,8 @@ return [
     */
     'disk' => env('PERMISOS_DOCUMENTOS_DISK', 'public'),
 
-    /*
-    |--------------------------------------------------------------------------
-    | Estados de firmas
-    |--------------------------------------------------------------------------
-    */
     'estatus_firma_firmado' => 'firmado',
 
-    /*
-    |--------------------------------------------------------------------------
-    | Tipos de firma requeridos
-    |--------------------------------------------------------------------------
-    */
     'firmas_requeridas' => [
         'colaborador',
         'lider',

@@ -9,6 +9,7 @@ use App\Models\PermisoFirma;
 use App\Models\PermisoNotificacion;
 use App\Models\PermisoSolicitud;
 use App\Models\TipoPermiso;
+use App\Services\Permisos\PermisoDocumentoWorkflowService;
 use Carbon\Carbon;
 use Carbon\CarbonPeriod;
 use Illuminate\Http\Request;
@@ -59,6 +60,18 @@ class PermisoPublicController extends Controller
             return back()->withInput()->with('error', 'El rango seleccionado no contiene días hábiles descontables.');
         }
 
+        $solicitudCruzada = PermisoSolicitud::existeCruceDeFechas(
+            $empleado->id,
+            $fechaInicio->toDateString(),
+            $fechaFin->toDateString()
+        );
+
+        if ($solicitudCruzada) {
+            return back()
+                ->withInput()
+                ->with('error', 'Ya existe una solicitud activa para este colaborador que se cruza con las fechas seleccionadas. Solicitud existente: #' . $solicitudCruzada->id . ' del ' . $solicitudCruzada->fecha_inicio?->format('d/m/Y') . ' al ' . $solicitudCruzada->fecha_fin?->format('d/m/Y') . '.');
+        }
+
         if ($tipo->requiere_saldo && $dias > $empleado->vacaciones_disponibles) {
             return back()->withInput()->with('error', "No puedes solicitar {$dias} días. El colaborador solo tiene {$empleado->vacaciones_disponibles} días disponibles.");
         }
@@ -97,9 +110,12 @@ class PermisoPublicController extends Controller
             return $solicitud;
         });
 
-        $this->enviarCorreosFirma($solicitud->fresh(['firmas', 'empleado', 'lider', 'tipoPermiso']));
+        $solicitud = $solicitud->fresh(['firmas', 'empleado.area', 'lider', 'tipoPermiso']);
 
-        return redirect()->route('permisos.gracias')->with('success', 'Solicitud registrada. Se enviaron los enlaces de firma al colaborador y al líder correspondiente.');
+        $this->enviarCorreosFirma($solicitud);
+        $this->enviarDocumentoInicialSeguro($solicitud);
+
+        return redirect()->route('permisos.gracias')->with('success', 'Solicitud registrada. Se generó el formato y se enviaron los enlaces de firma al colaborador y al líder correspondiente.');
     }
 
     public function gracias()
@@ -157,6 +173,13 @@ class PermisoPublicController extends Controller
             }
         });
 
+        $solicitud = PermisoSolicitud::with(['firmas', 'empleado.area', 'lider', 'tipoPermiso'])
+            ->find($firma->permiso_solicitud_id);
+
+        if ($solicitud) {
+            $this->procesarDocumentoFirmadoSeguro($solicitud);
+        }
+
         return redirect()->route('permisos.firma.show', $token)->with('success', 'Firma registrada correctamente.');
     }
 
@@ -201,6 +224,30 @@ class PermisoPublicController extends Controller
                     'error' => $e->getMessage(),
                 ]);
             }
+        }
+    }
+
+    private function enviarDocumentoInicialSeguro(PermisoSolicitud $solicitud): void
+    {
+        try {
+            app(PermisoDocumentoWorkflowService::class)->enviarDocumentoInicial($solicitud);
+        } catch (\Throwable $e) {
+            Log::error('Error generando/enviando documento inicial de permiso', [
+                'permiso_solicitud_id' => $solicitud->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    private function procesarDocumentoFirmadoSeguro(PermisoSolicitud $solicitud): void
+    {
+        try {
+            app(PermisoDocumentoWorkflowService::class)->procesarFirmasCompletas($solicitud);
+        } catch (\Throwable $e) {
+            Log::error('Error generando/enviando documento firmado de permiso', [
+                'permiso_solicitud_id' => $solicitud->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 
