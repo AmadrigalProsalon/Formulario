@@ -1,58 +1,73 @@
-# Parche integrado: Permisos físicos, documentos y búsqueda de empleados
+# Parche: Perfiles de Puesto desde DOCX + Requisición de Personal
 
-Este ZIP deja el módulo de permisos/ausencias con el flujo físico solicitado:
+Este parche agrega un módulo para importar descriptivos de puesto en Word (.docx), revisar la información detectada y usarla para autollenar el formulario de Requisición de Personal.
 
-- La firma digital queda desactivada por configuración.
-- El sistema genera el DOCX y lo manda por correo al líder, colaborador y RH.
-- El líder descarga/firma físicamente, luego firma el colaborador y entregan a RH.
-- RH marca: formato recibido, pendiente, observaciones o cancelado.
-- Los días de vacaciones solo se descuentan cuando RH marca `formato_recibido`.
-- Si RH cancela, no se descuentan días.
-- Admin de empleados con filtros por departamento y búsqueda.
-- Formulario público con buscador/autocomplete de empleado.
+## Qué incluye
+
+- Tabla `perfiles_puesto`.
+- Tabla `perfil_puesto_responsabilidades`.
+- Tabla base `requisiciones_personal` para control futuro de vacantes.
+- Importador de DOCX.
+- Parser para extraer datos de descriptivos de puesto.
+- Vista admin `/admin/perfiles-puesto`.
+- API pública interna para buscar perfiles.
+- Autocomplete en el formulario de Requisición de Personal.
+- Seeder para crear/actualizar el formulario `requisicion-personal`.
 
 ## Aplicación
 
-Copiar el contenido de este ZIP encima del proyecto Laravel.
-
-El archivo `routes/permisos.php` viene completo. Si tu `routes/web.php` todavía no lo carga, agrega una sola vez al final:
-
-```php
-require __DIR__ . '/permisos.php';
-```
-
-Variables recomendadas en `.env`:
-
-```env
-PERMISOS_FIRMA_DIGITAL=false
-PERMISOS_RH_EMAIL=rh@prosalon.mx
-PERMISOS_DOCUMENTOS_DISK=public
-# Opcional; si no existe, usa resources/templates/formato_permiso.docx
-PERMISOS_TEMPLATE_PATH=
-```
-
-Comandos:
+Desde la raíz del proyecto:
 
 ```bash
-cd ~/Formulario
+unzip perfiles_puesto_requisicion_patch.zip -d .
+python3 scripts/instalar_perfiles_puesto.py
 
 docker compose up -d --build
 
 docker exec -it formulario_rh_app php artisan migrate --force
-docker exec -it formulario_rh_app php artisan storage:link
+docker exec -it formulario_rh_app php artisan db:seed --class=RequisicionPersonalConPerfilesSeeder --force
 docker exec -it formulario_rh_app php artisan optimize:clear
 docker exec -it formulario_rh_app php artisan route:clear
 docker exec -it formulario_rh_app php artisan view:clear
 docker exec -it formulario_rh_app php artisan config:clear
+```
 
+Si los estilos/JS no cargan:
+
+```bash
 docker exec -it formulario_rh_app npm run build
 rm -rf public/build
 docker cp formulario_rh_app:/var/www/html/public/build ./public/build
-docker compose restart nginx
+docker compose restart nginx app
 ```
 
-URLs:
+## Prueba con el DOCX
 
-- Público: `/permisos/solicitud`
-- Admin solicitudes: `/admin/permisos`
-- Admin empleados: `/admin/permisos-catalogos/empleados`
+1. Entra a:
+
+```text
+http://31.97.215.46:8092/admin/perfiles-puesto
+```
+
+2. Sube `ATENCION AL CLIENTE.docx`.
+3. Revisa el perfil importado y guárdalo.
+4. Entra al formulario:
+
+```text
+http://31.97.215.46:8092/f/requisicion-personal
+```
+
+5. En el campo "Perfil de puesto base" busca `Atención al Cliente`.
+6. Selecciónalo y revisa cómo autollena campos como área, puesto que reporta, funciones, requerimientos y habilidades.
+
+## Nota
+
+El parser funciona mejor si los Word tienen estructura similar al documento de ejemplo:
+
+- Identificador de puesto.
+- Descripción del puesto.
+- Objetivo del puesto.
+- Requerimientos mínimos.
+- Cualidades.
+- Habilidades.
+- Responsabilidades y actividades.
