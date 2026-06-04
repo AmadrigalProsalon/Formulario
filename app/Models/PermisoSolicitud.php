@@ -18,41 +18,39 @@ class PermisoSolicitud extends Model
         'dias_solicitados',
         'motivo',
         'estatus',
+        'documento_path',
+        'documento_enviado_at',
         'formato_recibido',
         'formato_recibido_at',
         'formato_recibido_por',
         'observaciones_rh',
-        'documento_inicial_path',
-        'documento_firmado_path',
-        'documento_inicial_enviado_at',
-        'documento_firmado_enviado_rh_at',
-        'ip',
-        'user_agent',
+        'cancelado_at',
+        'cancelado_por',
     ];
 
     protected $casts = [
         'fecha_inicio' => 'date',
         'fecha_fin' => 'date',
-        'dias_solicitados' => 'decimal:2',
+        'documento_enviado_at' => 'datetime',
         'formato_recibido' => 'boolean',
         'formato_recibido_at' => 'datetime',
-        'documento_inicial_enviado_at' => 'datetime',
-        'documento_firmado_enviado_rh_at' => 'datetime',
+        'cancelado_at' => 'datetime',
+        'dias_solicitados' => 'decimal:2',
     ];
 
     public function tipoPermiso()
     {
-        return $this->belongsTo(TipoPermiso::class);
+        return $this->belongsTo(TipoPermiso::class, 'tipo_permiso_id');
     }
 
     public function empleado()
     {
-        return $this->belongsTo(Empleado::class);
+        return $this->belongsTo(Empleado::class, 'empleado_id');
     }
 
     public function area()
     {
-        return $this->belongsTo(Area::class);
+        return $this->belongsTo(Area::class, 'area_id');
     }
 
     public function lider()
@@ -60,64 +58,31 @@ class PermisoSolicitud extends Model
         return $this->belongsTo(Empleado::class, 'lider_id');
     }
 
-    public function firmas()
-    {
-        return $this->hasMany(PermisoFirma::class);
-    }
-
-    public function notificaciones()
-    {
-        return $this->hasMany(PermisoNotificacion::class);
-    }
-
     public function recibidoPor()
     {
         return $this->belongsTo(User::class, 'formato_recibido_por');
     }
 
-    public function firmasPendientes()
+    public function scopeActivas($query)
     {
-        return $this->firmas()->where('estatus', 'pendiente');
+        return $query->whereNotIn('estatus', config('permisos.estatus_no_activos', ['cancelado']));
     }
 
     public static function existeCruceDeFechas(int $empleadoId, string $fechaInicio, string $fechaFin, ?int $ignorarSolicitudId = null): ?self
     {
         return self::where('empleado_id', $empleadoId)
-            ->when($ignorarSolicitudId, fn ($query) => $query->where('id', '!=', $ignorarSolicitudId))
-            ->whereNotIn('estatus', [
-                'cancelado',
-            ])
+            ->when($ignorarSolicitudId, fn ($q) => $q->where('id', '!=', $ignorarSolicitudId))
+            ->whereIn('estatus', config('permisos.estatus_activos_para_cruce', [
+                'formato_generado',
+                'formato_enviado',
+                'formato_pendiente',
+                'formato_recibido',
+                'con_observaciones',
+            ]))
             ->where(function ($query) use ($fechaInicio, $fechaFin) {
                 $query->whereDate('fecha_inicio', '<=', $fechaFin)
                     ->whereDate('fecha_fin', '>=', $fechaInicio);
             })
             ->first();
-    }
-
-    public function getEstatusLabelAttribute(): string
-    {
-        return match ($this->estatus) {
-            'pendiente_firma_colaborador' => 'Pendiente firma colaborador',
-            'pendiente_firma_lider' => 'Pendiente firma líder',
-            'firmado_completo' => 'Firmado completo',
-            'formato_recibido' => 'Formato recibido RH',
-            'formato_pendiente' => 'Formato pendiente RH',
-            'con_observaciones' => 'Con observaciones',
-            'cancelado' => 'Cancelado',
-            default => ucfirst(str_replace('_', ' ', (string) $this->estatus)),
-        };
-    }
-
-    public function getBadgeClassAttribute(): string
-    {
-        return match ($this->estatus) {
-            'pendiente_firma_colaborador', 'pendiente_firma_lider' => 'bg-yellow-100 text-yellow-800 border-yellow-200',
-            'firmado_completo' => 'bg-emerald-100 text-emerald-800 border-emerald-200',
-            'formato_recibido' => 'bg-blue-100 text-blue-800 border-blue-200',
-            'formato_pendiente' => 'bg-slate-100 text-slate-800 border-slate-200',
-            'con_observaciones' => 'bg-orange-100 text-orange-800 border-orange-200',
-            'cancelado' => 'bg-red-100 text-red-800 border-red-200',
-            default => 'bg-slate-100 text-slate-800 border-slate-200',
-        };
     }
 }
