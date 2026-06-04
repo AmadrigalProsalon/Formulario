@@ -11,26 +11,33 @@ return new class extends Migration
         if (! Schema::hasTable('perfiles_puesto')) {
             Schema::create('perfiles_puesto', function (Blueprint $table) {
                 $table->id();
-                $table->string('nombre_puesto')->index();
+
+                $table->string('nombre_puesto')->nullable()->index();
+                $table->string('slug')->nullable()->unique();
+
                 $table->string('codigo')->nullable();
                 $table->string('version')->nullable();
                 $table->string('fecha_elaboracion')->nullable();
+
                 $table->string('organizacion')->nullable();
-                $table->string('area_departamento')->nullable()->index();
+                $table->string('area_departamento')->nullable();
                 $table->string('puesto_reporta')->nullable();
+
                 $table->longText('descripcion_puesto')->nullable();
                 $table->longText('objetivo_puesto')->nullable();
                 $table->longText('requerimientos_minimos')->nullable();
                 $table->longText('cualidades')->nullable();
                 $table->longText('habilidades')->nullable();
                 $table->longText('responsabilidades')->nullable();
-                $table->text('escolaridad_detectada')->nullable();
-                $table->text('experiencia_detectada')->nullable();
-                $table->string('ingles_detectado')->nullable();
-                $table->text('software_detectado')->nullable();
+
+                $table->longText('escolaridad_detectada')->nullable();
+                $table->longText('experiencia_detectada')->nullable();
+                $table->longText('ingles_detectado')->nullable();
+                $table->longText('software_detectado')->nullable();
+
                 $table->string('archivo_original_path')->nullable();
-                $table->longText('texto_original')->nullable();
-                $table->boolean('activo')->default(true)->index();
+                $table->boolean('activo')->default(true);
+
                 $table->timestamps();
             });
 
@@ -38,28 +45,94 @@ return new class extends Migration
         }
 
         Schema::table('perfiles_puesto', function (Blueprint $table) {
-            $columns = Schema::getColumnListing('perfiles_puesto');
+            if (! Schema::hasColumn('perfiles_puesto', 'nombre_puesto')) {
+                $table->string('nombre_puesto')->nullable()->index();
+            }
 
-            if (! in_array('escolaridad_detectada', $columns, true)) {
-                $table->text('escolaridad_detectada')->nullable()->after('responsabilidades');
+            if (! Schema::hasColumn('perfiles_puesto', 'slug')) {
+                $table->string('slug')->nullable()->unique();
             }
-            if (! in_array('experiencia_detectada', $columns, true)) {
-                $table->text('experiencia_detectada')->nullable()->after('escolaridad_detectada');
+
+            if (! Schema::hasColumn('perfiles_puesto', 'codigo')) {
+                $table->string('codigo')->nullable();
             }
-            if (! in_array('ingles_detectado', $columns, true)) {
-                $table->string('ingles_detectado')->nullable()->after('experiencia_detectada');
+
+            if (! Schema::hasColumn('perfiles_puesto', 'version')) {
+                $table->string('version')->nullable();
             }
-            if (! in_array('software_detectado', $columns, true)) {
-                $table->text('software_detectado')->nullable()->after('ingles_detectado');
+
+            if (! Schema::hasColumn('perfiles_puesto', 'fecha_elaboracion')) {
+                $table->string('fecha_elaboracion')->nullable();
             }
-            if (! in_array('texto_original', $columns, true)) {
-                $table->longText('texto_original')->nullable()->after('archivo_original_path');
+
+            if (! Schema::hasColumn('perfiles_puesto', 'organizacion')) {
+                $table->string('organizacion')->nullable();
+            }
+
+            if (! Schema::hasColumn('perfiles_puesto', 'area_departamento')) {
+                $table->string('area_departamento')->nullable();
+            }
+
+            if (! Schema::hasColumn('perfiles_puesto', 'puesto_reporta')) {
+                $table->string('puesto_reporta')->nullable();
+            }
+
+            if (! Schema::hasColumn('perfiles_puesto', 'descripcion_puesto')) {
+                $table->longText('descripcion_puesto')->nullable();
+            }
+
+            if (! Schema::hasColumn('perfiles_puesto', 'objetivo_puesto')) {
+                $table->longText('objetivo_puesto')->nullable();
+            }
+
+            if (! Schema::hasColumn('perfiles_puesto', 'requerimientos_minimos')) {
+                $table->longText('requerimientos_minimos')->nullable();
+            }
+
+            if (! Schema::hasColumn('perfiles_puesto', 'cualidades')) {
+                $table->longText('cualidades')->nullable();
+            }
+
+            if (! Schema::hasColumn('perfiles_puesto', 'habilidades')) {
+                $table->longText('habilidades')->nullable();
+            }
+
+            if (! Schema::hasColumn('perfiles_puesto', 'responsabilidades')) {
+                $table->longText('responsabilidades')->nullable();
+            }
+
+            if (! Schema::hasColumn('perfiles_puesto', 'escolaridad_detectada')) {
+                $table->longText('escolaridad_detectada')->nullable();
+            }
+
+            if (! Schema::hasColumn('perfiles_puesto', 'experiencia_detectada')) {
+                $table->longText('experiencia_detectada')->nullable();
+            }
+
+            if (! Schema::hasColumn('perfiles_puesto', 'ingles_detectado')) {
+                $table->longText('ingles_detectado')->nullable();
+            }
+
+            if (! Schema::hasColumn('perfiles_puesto', 'software_detectado')) {
+                $table->longText('software_detectado')->nullable();
+            }
+
+            if (! Schema::hasColumn('perfiles_puesto', 'archivo_original_path')) {
+                $table->string('archivo_original_path')->nullable();
+            }
+
+            if (! Schema::hasColumn('perfiles_puesto', 'activo')) {
+                $table->boolean('activo')->default(true);
+            }
+
+            if (! Schema::hasColumn('perfiles_puesto', 'created_at')) {
+                $table->timestamps();
             }
         });
     }
 
     public function down(): void
     {
-        // No se borra para evitar perder perfiles importados.
+        Schema::dropIfExists('perfiles_puesto');
     }
 };
