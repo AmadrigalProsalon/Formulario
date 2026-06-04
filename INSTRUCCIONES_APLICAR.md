@@ -1,121 +1,102 @@
-# Parche módulo Vacaciones - Sistema Formularios RH
+# Parche módulo Permisos y Ausencias RH
 
-Este ZIP agrega un módulo especial de vacaciones al proyecto Laravel.
+Este ZIP agrega un módulo general para:
 
-## Qué incluye
+- Vacaciones.
+- Permiso con goce de sueldo.
+- Permiso sin goce de sueldo.
+- Permiso médico.
+- Otros permisos.
+- Control de áreas y empleados.
+- Firma digital interna con enlace por token.
+- Control RH: formato recibido, pendiente, observaciones o cancelado.
 
-- Tabla `empleados`
-- Tabla `vacaciones_solicitudes`
-- Tabla `vacaciones_dias_inhabiles`
-- Tabla `vacaciones_ajustes`
-- Solicitud pública de vacaciones
-- Consulta de días disponibles
-- Validación para no solicitar más días de los disponibles
-- Cálculo de días laborables descontando sábados, domingos y días inhábiles registrados
-- Panel admin para aprobar/rechazar solicitudes
-- Panel admin para empleados y saldos
-- Panel admin para días inhábiles
+## 1. Copiar archivos
 
-## Cómo aplicar
+Copia todas las carpetas del ZIP encima de tu proyecto Laravel.
 
-1. Descomprime este ZIP.
-2. Copia las carpetas sobre la raíz del proyecto Laravel.
-3. En `routes/web.php`, agrega al final, antes o después de `require __DIR__ . '/auth.php';`:
+## 2. Registrar rutas
+
+En `routes/web.php`, al final del archivo, antes o después de `require __DIR__ . '/auth.php';`, agrega:
 
 ```php
-require __DIR__ . '/vacaciones.php';
+require __DIR__ . '/permisos.php';
 ```
 
-4. En `resources/views/admin/layout.blade.php`, agrega estos enlaces al menú lateral:
-
-```blade
-<a href="{{ route('admin.vacaciones.index') }}"
-   class="block px-4 py-3 rounded-xl transition {{ request()->routeIs('admin.vacaciones.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">
-    Vacaciones
-</a>
-```
-
-Y en el menú móvil:
-
-```blade
-<a href="{{ route('admin.vacaciones.index') }}"
-   class="px-3 py-2 rounded-lg whitespace-nowrap {{ request()->routeIs('admin.vacaciones.*') ? 'bg-white text-slate-950' : 'bg-slate-800' }}">
-    Vacaciones
-</a>
-```
-
-5. Ejecuta en el VPS:
+## 3. Ejecutar comandos en Docker
 
 ```bash
 cd ~/Formulario
+
 docker compose up -d --build
+
 docker exec -it formulario_rh_app php artisan migrate --force
+docker exec -it formulario_rh_app php artisan storage:link
 docker exec -it formulario_rh_app php artisan optimize:clear
 docker exec -it formulario_rh_app php artisan route:clear
 docker exec -it formulario_rh_app php artisan view:clear
 docker exec -it formulario_rh_app php artisan config:clear
 ```
 
-## URLs nuevas
+## 4. Regenerar assets si es necesario
 
-Formulario público:
+```bash
+docker exec -it formulario_rh_app npm run build
+rm -rf public/build
+docker cp formulario_rh_app:/var/www/html/public/build ./public/build
+docker compose restart nginx
+```
+
+## 5. URLs
+
+Público:
 
 ```text
-http://TU_IP:8092/vacaciones/solicitud
+/permisos/solicitud
 ```
 
-Admin solicitudes:
+Admin:
 
 ```text
-http://TU_IP:8092/admin/vacaciones
+/admin/permisos
+/admin/permisos-catalogos/empleados
+/admin/permisos-catalogos/areas
+/admin/permisos-catalogos/tipos
 ```
 
-Admin empleados:
+## 6. Datos que RH debe cargar
 
-```text
-http://TU_IP:8092/admin/vacaciones/empleados
-```
+Primero cargar:
 
-Admin días inhábiles:
+1. Áreas.
+2. Empleados.
+3. Líderes.
+4. Asignar cada empleado a un área y líder.
+5. Revisar fecha de ingreso y saldo/ajustes de vacaciones.
 
-```text
-http://TU_IP:8092/admin/vacaciones/dias-inhabiles
-```
+## 7. Lógica de vacaciones
 
-## Cómo funciona el saldo
+Solo los tipos que tengan:
 
-El sistema calcula:
+- `descuenta_vacaciones = 1`
+- `requiere_saldo = 1`
 
-```text
-disponibles = días_totales - días_usados - días_pendientes
-```
+validan saldo y apartan días como pendientes.
 
-Donde:
+Cuando RH marca `Formato recibido`, los días pasan de pendientes a usados.
 
-- `días_totales` = días por antigüedad + ajustes manuales.
-- `días_usados` = solicitudes aprobadas del año.
-- `días_pendientes` = solicitudes pendientes del año.
+Cuando RH cancela o marca pendiente desde recibido, el saldo se ajusta automáticamente.
 
-Cuando un colaborador solicita vacaciones, la solicitud queda en `pendiente`, y esos días se bloquean para que no vuelva a solicitarlos.
+## 8. Firma digital interna
 
-## Regla de días por antigüedad
+El sistema genera links únicos para colaborador y líder.
 
-El cálculo inicial incluido es:
+Cada firma guarda:
 
-- 1 año: 12 días
-- 2 años: 14 días
-- 3 años: 16 días
-- 4 años: 18 días
-- 5 años: 20 días
-- Desde el año 6: aumenta 2 días por cada 5 años adicionales
+- imagen de firma;
+- fecha y hora;
+- IP;
+- navegador;
+- token único.
 
-## Query rápido de empleado de prueba
-
-```sql
-INSERT INTO empleados (numero_empleado, nombre, correo, departamento, puesto, fecha_ingreso, activo, created_at, updated_at)
-VALUES ('1001', 'Juan Pérez', 'juan.perez@prosalon.mx', 'Sistemas', 'Desarrollador', '2023-01-15', 1, NOW(), NOW());
-```
-
-## Nota
-
-Este módulo no reemplaza el sistema multi-formularios. Lo complementa con lógica especial para vacaciones.
+Esto sirve como control interno administrativo.
