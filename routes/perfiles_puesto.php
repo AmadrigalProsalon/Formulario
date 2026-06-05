@@ -14,6 +14,12 @@ Route::middleware(['auth', 'admin'])
         Route::delete('/perfiles-puesto/{perfil}', [PerfilPuestoController::class, 'destroy'])->name('perfiles-puesto.destroy');
     });
 
+Route::get('/api/perfiles-puesto/areas', [PerfilPuestoApiController::class, 'areas'])
+    ->name('api.perfiles-puesto.areas');
+
+Route::get('/api/perfiles-puesto/por-departamento', [PerfilPuestoApiController::class, 'porDepartamento'])
+    ->name('api.perfiles-puesto.por-departamento');
+
 Route::get('/api/perfiles-puesto/buscar', [PerfilPuestoApiController::class, 'buscar'])
     ->name('api.perfiles-puesto.buscar');
 

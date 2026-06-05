@@ -7,23 +7,72 @@ use Illuminate\Http\Request;
 
 class PerfilPuestoApiController extends Controller
 {
+    public function areas()
+    {
+        $areas = PerfilPuesto::query()
+            ->where('activo', 1)
+            ->whereNotNull('area_departamento')
+            ->where('area_departamento', '!=', '')
+            ->select('area_departamento')
+            ->distinct()
+            ->orderBy('area_departamento')
+            ->pluck('area_departamento')
+            ->values();
+
+        return response()->json($areas);
+    }
+
+    public function porDepartamento(Request $request)
+    {
+        $departamento = trim((string) $request->get('departamento'));
+
+        $perfiles = PerfilPuesto::query()
+            ->where('activo', 1)
+            ->when($departamento !== '', function ($query) use ($departamento) {
+                $query->where(function ($sub) use ($departamento) {
+                    $sub->where('area_departamento', $departamento)
+                        ->orWhere('area_departamento', 'like', '%' . $departamento . '%');
+                });
+            })
+            ->orderBy('nombre_puesto')
+            ->limit(200)
+            ->get()
+            ->map(fn ($perfil) => [
+                'id' => $perfil->id,
+                'nombre_puesto' => $perfil->nombre_puesto,
+                'area_departamento' => $perfil->area_departamento,
+                'puesto_reporta' => $perfil->puesto_reporta,
+            ]);
+
+        return response()->json($perfiles);
+    }
+
     public function buscar(Request $request)
     {
         $q = trim((string) $request->get('q'));
+        $departamento = trim((string) $request->get('departamento'));
 
-        if (mb_strlen($q) < 2) {
+        if (mb_strlen($q) < 2 && $departamento === '') {
             return response()->json([]);
         }
 
         return PerfilPuesto::query()
             ->where('activo', 1)
-            ->where(function ($query) use ($q) {
-                $query->where('nombre_puesto', 'like', "%{$q}%")
-                    ->orWhere('area_departamento', 'like', "%{$q}%")
-                    ->orWhere('puesto_reporta', 'like', "%{$q}%");
+            ->when($departamento !== '', function ($query) use ($departamento) {
+                $query->where(function ($sub) use ($departamento) {
+                    $sub->where('area_departamento', $departamento)
+                        ->orWhere('area_departamento', 'like', '%' . $departamento . '%');
+                });
+            })
+            ->when($q !== '', function ($query) use ($q) {
+                $query->where(function ($sub) use ($q) {
+                    $sub->where('nombre_puesto', 'like', "%{$q}%")
+                        ->orWhere('area_departamento', 'like', "%{$q}%")
+                        ->orWhere('puesto_reporta', 'like', "%{$q}%");
+                });
             })
             ->orderBy('nombre_puesto')
-            ->limit(15)
+            ->limit(50)
             ->get()
             ->map(fn ($perfil) => [
                 'id' => $perfil->id,
