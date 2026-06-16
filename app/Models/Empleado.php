@@ -11,6 +11,8 @@ class Empleado extends Model
     protected $fillable = [
         'area_id',
         'numero_empleado',
+        'curp',
+        'rfc',
         'nombre',
         'correo',
         'puesto',
@@ -18,12 +20,18 @@ class Empleado extends Model
         'es_lider',
         'lider_id',
         'activo',
+        'vacaciones_ajuste',
+        'vacaciones_usados',
+        'vacaciones_pendientes',
     ];
 
     protected $casts = [
         'fecha_ingreso' => 'date',
         'es_lider' => 'boolean',
         'activo' => 'boolean',
+        'vacaciones_ajuste' => 'decimal:2',
+        'vacaciones_usados' => 'decimal:2',
+        'vacaciones_pendientes' => 'decimal:2',
     ];
 
     public function area()

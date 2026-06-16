@@ -52,12 +52,20 @@ class PermisoSaldoService
         $correspondientes = $this->diasVacacionesCorrespondientes($empleado->fecha_ingreso);
         $usados = $this->diasUsados($empleado);
         $pendientes = $this->diasPendientes($empleado);
+        $ajuste = (float) ($empleado->vacaciones_ajuste ?? 0);
+        $total = max(0, $correspondientes + $ajuste);
 
         return [
+            'fecha_ingreso' => $empleado->fecha_ingreso?->format('Y-m-d'),
+            'fecha_ingreso_formato' => $empleado->fecha_ingreso?->format('d/m/Y'),
             'dias_correspondientes' => $correspondientes,
+            'dias_ajuste' => $ajuste,
+            'dias_asignados_total' => $total,
             'dias_usados' => $usados,
             'dias_pendientes_formato' => $pendientes,
-            'dias_disponibles' => max(0, $correspondientes - $usados),
+            // Regla actual: pendientes no descuentan. Solo descuentan los recibidos por RH.
+            'dias_disponibles' => max(0, $total - $usados),
+            'dias_restantes' => max(0, $total - $usados),
         ];
     }
 
