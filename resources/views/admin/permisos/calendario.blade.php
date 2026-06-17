@@ -1,3 +1,37 @@
+@php
+    use Carbon\Carbon;
+    use Carbon\CarbonPeriod;
+
+    $anio = isset($anio) ? (int) $anio : (int) request('anio', now()->year);
+    $mes = isset($mes) ? (int) $mes : (int) request('mes', now()->month);
+
+    $fechaBase = $fechaBase ?? Carbon::create($anio, $mes, 1)->startOfMonth();
+
+    $inicioCalendario = $inicioCalendario ?? $fechaBase->copy()->startOfMonth()->startOfWeek(Carbon::MONDAY);
+    $finCalendario = $finCalendario ?? $fechaBase->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
+
+    $diasCalendario = $diasCalendario ?? collect(CarbonPeriod::create($inicioCalendario, $finCalendario));
+
+    $nombresMeses = $nombresMeses ?? [
+        1 => 'Enero',
+        2 => 'Febrero',
+        3 => 'Marzo',
+        4 => 'Abril',
+        5 => 'Mayo',
+        6 => 'Junio',
+        7 => 'Julio',
+        8 => 'Agosto',
+        9 => 'Septiembre',
+        10 => 'Octubre',
+        11 => 'Noviembre',
+        12 => 'Diciembre',
+    ];
+
+    $diasSemana = $diasSemana ?? ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
+
+    $solicitudesPorDia = $solicitudesPorDia ?? collect();
+@endphp
+
 @extends('admin.layout')
 
 @section('title', 'Calendario de ausencias')

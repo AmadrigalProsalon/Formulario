@@ -75,3 +75,5 @@ Route::middleware(['auth', 'admin'])
 
 require __DIR__ . '/permisos.php';
 require __DIR__ . '/auth.php';
+
+require __DIR__ . '/perfiles_puesto_csv.php';

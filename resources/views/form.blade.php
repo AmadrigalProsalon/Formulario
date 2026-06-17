@@ -233,5 +233,6 @@
             </form>
         @endif
     </div>
+    @includeIf('partials.requisicion-csv-autofill')
 </body>
 </html>
