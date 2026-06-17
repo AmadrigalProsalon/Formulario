@@ -96,11 +96,7 @@
                         @endif
                     </div>
                 </div>
-            <a href="{{ route('admin.perfiles-puesto.csv') }}"
-   class="block px-4 py-3 rounded-xl transition {{ request()->routeIs('admin.perfiles-puesto.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">
-    Perfiles de puesto
-</a>
-</nav>
+            </nav>
 
             <div class="p-4 border-t border-slate-800 shrink-0 bg-slate-950">
                 <div class="text-xs text-slate-500 mb-2 truncate">{{ auth()->user()->email ?? '' }}</div>

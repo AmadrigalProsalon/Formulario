@@ -16,7 +16,7 @@ class CalendarioAusenciasController extends Controller
             (int) $request->query('anio', now()->year),
             (int) $request->query('mes', now()->month),
             1
-        );
+        )->locale('es');
 
         $inicioMes = $fechaBase->copy()->startOfMonth();
         $finMes = $fechaBase->copy()->endOfMonth();

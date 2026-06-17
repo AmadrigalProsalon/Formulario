@@ -1,38 +1,29 @@
+@extends('admin.layout')
+
 @php
     use Carbon\Carbon;
-    use Carbon\CarbonPeriod;
 
     $anio = isset($anio) ? (int) $anio : (int) request('anio', now()->year);
     $mes = isset($mes) ? (int) $mes : (int) request('mes', now()->month);
 
-    $fechaBase = $fechaBase ?? Carbon::create($anio, $mes, 1)->startOfMonth();
+    $fechaBase = ($fechaBase ?? Carbon::create($anio, $mes, 1))->locale('es')->startOfMonth();
+    $inicioMes = $inicioMes ?? $fechaBase->copy()->startOfMonth();
+    $finMes = $finMes ?? $fechaBase->copy()->endOfMonth();
+    $prev = $prev ?? $fechaBase->copy()->subMonth();
+    $next = $next ?? $fechaBase->copy()->addMonth();
 
-    $inicioCalendario = $inicioCalendario ?? $fechaBase->copy()->startOfMonth()->startOfWeek(Carbon::MONDAY);
-    $finCalendario = $finCalendario ?? $fechaBase->copy()->endOfMonth()->endOfWeek(Carbon::SUNDAY);
-
-    $diasCalendario = $diasCalendario ?? collect(CarbonPeriod::create($inicioCalendario, $finCalendario));
-
-    $nombresMeses = $nombresMeses ?? [
-        1 => 'Enero',
-        2 => 'Febrero',
-        3 => 'Marzo',
-        4 => 'Abril',
-        5 => 'Mayo',
-        6 => 'Junio',
-        7 => 'Julio',
-        8 => 'Agosto',
-        9 => 'Septiembre',
-        10 => 'Octubre',
-        11 => 'Noviembre',
-        12 => 'Diciembre',
+    $dias = $dias ?? [];
+    $areas = $areas ?? collect();
+    $tiposPermiso = $tiposPermiso ?? collect();
+    $estatusOpciones = $estatusOpciones ?? [
+        'formato_enviado' => 'Formato enviado',
+        'formato_pendiente' => 'Formato pendiente',
+        'formato_recibido' => 'Formato recibido',
+        'con_observaciones' => 'Con observaciones',
+        'cancelado' => 'Cancelado',
     ];
-
-    $diasSemana = $diasSemana ?? ['Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb', 'Dom'];
-
-    $solicitudesPorDia = $solicitudesPorDia ?? collect();
+    $totalSolicitudes = $totalSolicitudes ?? 0;
 @endphp
-
-@extends('admin.layout')
 
 @section('title', 'Calendario de ausencias')
 @section('page_title', 'Calendario de ausencias')
@@ -44,7 +35,7 @@
             <div class="bg-white rounded-2xl border border-slate-200 shadow-sm p-5">
                 <p class="text-sm text-slate-500">Mes consultado</p>
                 <p class="text-2xl font-bold text-slate-900">
-                    {{ ucfirst($fechaBase->translatedFormat('F Y')) }}
+                    {{ ucfirst($fechaBase->locale('es')->translatedFormat('F Y')) }}
                 </p>
             </div>
 
@@ -71,7 +62,7 @@
                     <select name="mes" class="w-full rounded-xl border-slate-300">
                         @for($m = 1; $m <= 12; $m++)
                             <option value="{{ $m }}" @selected((int) request('mes', $fechaBase->month) === $m)>
-                                {{ ucfirst(\Carbon\Carbon::create($fechaBase->year, $m, 1)->translatedFormat('F')) }}
+                                {{ ucfirst(\Carbon\Carbon::create($fechaBase->year, $m, 1)->locale('es')->translatedFormat('F')) }}
                             </option>
                         @endfor
                     </select>
@@ -130,7 +121,7 @@
         <div class="bg-white rounded-2xl border border-slate-200 shadow-sm overflow-hidden">
             <div class="p-5 border-b border-slate-200 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                 <div>
-                    <h2 class="text-xl font-bold text-slate-900">{{ ucfirst($fechaBase->translatedFormat('F Y')) }}</h2>
+                    <h2 class="text-xl font-bold text-slate-900">{{ ucfirst($fechaBase->locale('es')->translatedFormat('F Y')) }}</h2>
                     <p class="text-sm text-slate-500">Vista mensual de ausencias registradas.</p>
                 </div>
 
@@ -173,7 +164,7 @@
                                 {{ $fecha->day }}
                             </div>
                             <div class="md:hidden text-xs text-slate-500">
-                                {{ ucfirst($fecha->translatedFormat('l')) }}
+                                {{ ucfirst($fecha->locale('es')->translatedFormat('l')) }}
                             </div>
                         </div>
 
