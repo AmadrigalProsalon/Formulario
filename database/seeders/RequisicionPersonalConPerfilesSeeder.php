@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-class RequisicionPersonalConPerfilesSeeder extends PerfilPuestoRequisicionAutofillSeeder
+class RequisicionPersonalConPerfilesSeeder extends DemoRHCompletoSeeder
 {
-    // Alias para compatibilidad con comandos anteriores.
 }
