@@ -236,3 +236,5 @@
     @includeIf('partials.requisicion-csv-autofill')
 </body>
 </html>
+
+@include('partials.perfiles-puesto-autofill')

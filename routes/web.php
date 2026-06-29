@@ -72,8 +72,41 @@ Route::middleware(['auth', 'admin'])
         Route::get('/import', fn () => view('admin.import'))->name('import.view');
         Route::post('/import-excel', [ExcelController::class, 'import'])->name('import.excel');
     });
+if (file_exists(__DIR__ . '/permisos.php')) {
+    require __DIR__ . '/permisos.php';
+}
 
-require __DIR__ . '/permisos.php';
+if (file_exists(__DIR__ . '/permisos_documentos.php')) {
+    require __DIR__ . '/permisos_documentos.php';
+}
+
+/* admin_ux.php deshabilitado: calendario cargado directo desde web.php */
+
+
+Route::middleware(['auth'])
+    ->get('/permisos/calendario', function () {
+        return redirect()->route('admin.permisos.calendario');
+    });
+
+
+
+
+Route::get('/permisos/calendario', function () {
+    return redirect()->route('admin.permisos.calendario');
+})->middleware(['auth']);
+
+
+
+if (file_exists(__DIR__ . '/ausencias_calendario.php')) {
+    require __DIR__ . '/ausencias_calendario.php';
+}
+
+
+if (file_exists(__DIR__ . '/perfiles_puesto_autofill.php')) {
+    require __DIR__ . '/perfiles_puesto_autofill.php';
+}
+
 require __DIR__ . '/auth.php';
 
 require __DIR__ . '/perfiles_puesto_csv.php';
+

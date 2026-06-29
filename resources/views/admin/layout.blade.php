@@ -20,7 +20,7 @@
                     <div class="space-y-1">
                         <a href="{{ route('admin.dashboard') }}" class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.dashboard') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Inicio</a>
                         @if(Route::has('form.index'))
-                            <a href="{{ route('form.index') }}" target="_blank" class="block px-4 py-2.5 rounded-xl transition text-slate-300 hover:bg-slate-800">Ver formulario público</a>
+                            <a href="{{ url('/permisos/solicitud')}}" target="_blank" class="block px-4 py-2.5 rounded-xl transition text-slate-300 hover:bg-slate-800">Solicitud de Vacaciones</a>
                         @endif
                     </div>
                 </div>
@@ -43,33 +43,68 @@
                     </div>
                 </div>
 
-                <div>
-                    <div class="px-3 text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-2">Permisos y ausencias</div>
-                    <div class="space-y-1">
-                        @if(Route::has('admin.permisos.index'))
-                            <a href="{{ route('admin.permisos.index') }}" class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos.index') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Solicitudes</a>
-                        @endif
-                        @if(Route::has('admin.permisos.calendario'))
-                            <a href="{{ route('admin.permisos.calendario') }}" class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos.calendario') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Calendario</a>
-                        @endif
-                        @if(Route::has('admin.permisos.empleados.index'))
-                            <a href="{{ route('admin.permisos.empleados.index') }}" class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos.empleados.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Empleados</a>
-                        @elseif(Route::has('admin.permisos-catalogos.empleados.index'))
-                            <a href="{{ route('admin.permisos-catalogos.empleados.index') }}" class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos-catalogos.empleados.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Empleados</a>
-                        @endif
-                        @if(Route::has('admin.permisos.areas.index'))
-                            <a href="{{ route('admin.permisos.areas.index') }}" class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos.areas.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Áreas</a>
-                        @elseif(Route::has('admin.permisos-catalogos.areas.index'))
-                            <a href="{{ route('admin.permisos-catalogos.areas.index') }}" class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos-catalogos.areas.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Áreas</a>
-                        @endif
-                        @if(Route::has('admin.permisos.tipos.index'))
-                            <a href="{{ route('admin.permisos.tipos.index') }}" class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos.tipos.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Tipos de permiso</a>
-                        @elseif(Route::has('admin.permisos-catalogos.tipos.index'))
-                            <a href="{{ route('admin.permisos-catalogos.tipos.index') }}" class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos-catalogos.tipos.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800' }}">Tipos de permiso</a>
-                        @endif
-                    </div>
-                </div>
+<div>
+    <div class="px-3 text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-2">
+        Permisos y ausencias
+    </div>
 
+    <div class="space-y-1">
+        @if(Route::has('admin.permisos.index'))
+            <a href="{{ route('admin.permisos.index') }}"
+               class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos.index') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                Solicitudes
+            </a>
+        @endif
+
+        @if(Route::has('admin.ausencias.calendario'))
+            <a href="{{ route('admin.ausencias.calendario') }}"
+               class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.ausencias.calendario') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                Calendario de ausencias
+            </a>
+        @elseif(Route::has('admin.permisos.calendario'))
+            <a href="{{ route('admin.permisos.calendario') }}"
+               class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos.calendario') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                Calendario de ausencias
+            </a>
+        @endif
+
+        @if(Route::has('admin.permisos.empleados.index'))
+            <a href="{{ route('admin.permisos.empleados.index') }}"
+               class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos.empleados.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                Empleados
+            </a>
+        @elseif(Route::has('admin.permisos-catalogos.empleados.index'))
+            <a href="{{ route('admin.permisos-catalogos.empleados.index') }}"
+               class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos-catalogos.empleados.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                Empleados
+            </a>
+        @endif
+
+        @if(Route::has('admin.permisos.areas.index'))
+            <a href="{{ route('admin.permisos.areas.index') }}"
+               class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos.areas.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                Áreas
+            </a>
+        @elseif(Route::has('admin.permisos-catalogos.areas.index'))
+            <a href="{{ route('admin.permisos-catalogos.areas.index') }}"
+               class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos-catalogos.areas.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                Áreas
+            </a>
+        @endif
+
+        @if(Route::has('admin.permisos.tipos.index'))
+            <a href="{{ route('admin.permisos.tipos.index') }}"
+               class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos.tipos.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                Tipos de permiso
+            </a>
+        @elseif(Route::has('admin.permisos-catalogos.tipos.index'))
+            <a href="{{ route('admin.permisos-catalogos.tipos.index') }}"
+               class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos-catalogos.tipos.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                Tipos de permiso
+            </a>
+        @endif
+    </div>
+</div>
                 <div>
                     <div class="px-3 text-[11px] uppercase tracking-wider text-slate-500 font-bold mb-2">Vacantes</div>
                     <div class="space-y-1">

@@ -15,7 +15,7 @@ Route::prefix('permisos')->name('permisos.')->group(function () {
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
     Route::get('/permisos', [PermisosAdminController::class, 'index'])->name('permisos.index');
-    Route::get('/permisos/calendario', [PermisosAdminController::class, 'calendario'])->name('permisos.calendario');
+//    Route::get('/permisos/calendario', [PermisosAdminController::class, 'calendario'])->name('permisos.calendario');
     Route::get('/permisos/{permiso}', [PermisosAdminController::class, 'show'])->name('permisos.show');
     Route::post('/permisos/{permiso}/recibido', [PermisosAdminController::class, 'marcarRecibido'])->name('permisos.recibido');
     Route::post('/permisos/{permiso}/pendiente', [PermisosAdminController::class, 'marcarPendiente'])->name('permisos.pendiente');
