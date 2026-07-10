@@ -7,7 +7,8 @@
         "laravel/framework": "^12.0",
         "laravel/tinker": "^2.10",
         "phpoffice/phpword": "^1.3",
-        "phpoffice/phpspreadsheet": "^1.30"
+        "phpoffice/phpspreadsheet": "^1.30",
+        "inertiajs/inertia-laravel": "^2.0"
     },
     "require-dev": {
         "fakerphp/faker": "^1.23",

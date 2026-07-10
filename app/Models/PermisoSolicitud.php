@@ -43,6 +43,12 @@ class PermisoSolicitud extends Model
         'dias_solicitados' => 'decimal:2',
     ];
 
+
+    public function diasSeleccionados()
+    {
+        return $this->hasMany(PermisoSolicitudDia::class, 'permiso_solicitud_id')->orderBy('fecha');
+    }
+
     public function tipoPermiso()
     {
         return $this->belongsTo(TipoPermiso::class, 'tipo_permiso_id');

@@ -23,6 +23,7 @@ class Empleado extends Model
         'vacaciones_ajuste',
         'vacaciones_usados',
         'vacaciones_pendientes',
+        'dias_laborales',
     ];
 
     protected $casts = [
@@ -32,6 +33,7 @@ class Empleado extends Model
         'vacaciones_ajuste' => 'decimal:2',
         'vacaciones_usados' => 'decimal:2',
         'vacaciones_pendientes' => 'decimal:2',
+        'dias_laborales' => 'array',
     ];
 
     public function area()

@@ -8,10 +8,11 @@ class Area extends Model
 {
     protected $table = 'areas';
 
-    protected $fillable = ['nombre', 'descripcion', 'activo'];
+    protected $fillable = ['nombre', 'descripcion', 'activo', 'dias_laborales'];
 
     protected $casts = [
         'activo' => 'boolean',
+        'dias_laborales' => 'array',
     ];
 
     public function empleados()

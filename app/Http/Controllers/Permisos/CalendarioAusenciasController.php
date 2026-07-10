@@ -20,7 +20,6 @@ class CalendarioAusenciasController extends Controller
 
         $inicioMes = $fechaBase->copy()->startOfMonth();
         $finMes = $fechaBase->copy()->endOfMonth();
-
         $inicioCalendario = $inicioMes->copy()->startOfWeek(Carbon::MONDAY);
         $finCalendario = $finMes->copy()->endOfWeek(Carbon::SUNDAY);
 
@@ -42,17 +41,11 @@ class CalendarioAusenciasController extends Controller
         $tiposPermiso = collect();
 
         if (Schema::hasTable('areas')) {
-            $areas = DB::table('areas')
-                ->select('id', 'nombre')
-                ->orderBy('nombre')
-                ->get();
+            $areas = DB::table('areas')->select('id', 'nombre')->orderBy('nombre')->get();
         }
 
         if (Schema::hasTable('tipos_permisos')) {
-            $tiposPermiso = DB::table('tipos_permisos')
-                ->select('id', 'nombre')
-                ->orderBy('nombre')
-                ->get();
+            $tiposPermiso = DB::table('tipos_permisos')->select('id', 'nombre')->orderBy('nombre')->get();
         }
 
         if (Schema::hasTable('permisos_solicitudes')) {
@@ -101,8 +94,31 @@ class CalendarioAusenciasController extends Controller
                     return $solicitud;
                 });
 
+            $diasSeleccionados = collect();
+
+            if (Schema::hasTable('permiso_solicitud_dias') && $solicitudes->isNotEmpty()) {
+                $diasSeleccionados = DB::table('permiso_solicitud_dias')
+                    ->whereIn('permiso_solicitud_id', $solicitudes->pluck('id'))
+                    ->whereBetween('fecha', [$inicioCalendario->format('Y-m-d'), $finCalendario->format('Y-m-d')])
+                    ->orderBy('fecha')
+                    ->get()
+                    ->groupBy('permiso_solicitud_id');
+            }
+
             foreach ($solicitudes as $solicitud) {
-                foreach ($dias as $key => &$dia) {
+                $diasEspecificos = $diasSeleccionados->get($solicitud->id, collect());
+
+                if ($diasEspecificos->isNotEmpty()) {
+                    foreach ($diasEspecificos as $diaSolicitud) {
+                        $key = Carbon::parse($diaSolicitud->fecha)->format('Y-m-d');
+                        if (isset($dias[$key])) {
+                            $dias[$key]['eventos'][] = $solicitud;
+                        }
+                    }
+                    continue;
+                }
+
+                foreach ($dias as &$dia) {
                     if ($dia['fecha']->betweenIncluded($solicitud->fecha_inicio_carbon, $solicitud->fecha_fin_carbon)) {
                         $dia['eventos'][] = $solicitud;
                     }

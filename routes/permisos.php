@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\PermisosAdminController;
+use App\Http\Controllers\Admin\CalendarioLaboralAdminController;
 use App\Http\Controllers\Admin\PermisosEmpleadosController;
 use App\Http\Controllers\Permisos\EmpleadoSearchController;
 use App\Http\Controllers\Permisos\PermisoSolicitudController;
@@ -11,6 +12,7 @@ Route::prefix('permisos')->name('permisos.')->group(function () {
     Route::post('/solicitud', [PermisoSolicitudController::class, 'store'])->middleware('throttle:10,1')->name('solicitud.store');
     Route::get('/gracias', [PermisoSolicitudController::class, 'gracias'])->name('solicitud.gracias');
     Route::get('/empleados/buscar', EmpleadoSearchController::class)->name('empleados.buscar');
+    Route::post('/fechas/validar', [PermisoSolicitudController::class, 'validarFechas'])->middleware('throttle:60,1')->name('fechas.validar');
 });
 
 Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(function () {
@@ -30,4 +32,9 @@ Route::middleware(['auth', 'admin'])->prefix('admin')->name('admin.')->group(fun
     Route::get('/permisos-catalogos/empleados/importar', [PermisosEmpleadosController::class, 'importForm'])->name('permisos.empleados.importar');
     Route::post('/permisos-catalogos/empleados/importar', [PermisosEmpleadosController::class, 'import'])->name('permisos.empleados.importar.store');
     Route::put('/permisos-catalogos/empleados/{empleado}', [PermisosEmpleadosController::class, 'update'])->name('permisos.empleados.update');
+
+    Route::get('/permisos-catalogos/calendario-laboral', [CalendarioLaboralAdminController::class, 'index'])->name('permisos.calendario-laboral.index');
+    Route::put('/permisos-catalogos/calendario-laboral/areas/{area}', [CalendarioLaboralAdminController::class, 'updateArea'])->name('permisos.calendario-laboral.areas.update');
+    Route::post('/permisos-catalogos/calendario-laboral/inhabiles', [CalendarioLaboralAdminController::class, 'storeInhabil'])->name('permisos.calendario-laboral.inhabiles.store');
+    Route::delete('/permisos-catalogos/calendario-laboral/inhabiles/{dia}', [CalendarioLaboralAdminController::class, 'destroyInhabil'])->name('permisos.calendario-laboral.inhabiles.destroy');
 });

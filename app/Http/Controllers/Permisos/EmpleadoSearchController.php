@@ -4,14 +4,18 @@ namespace App\Http\Controllers\Permisos;
 
 use App\Http\Controllers\Controller;
 use App\Models\Empleado;
+use App\Services\Permisos\CalendarioLaboralService;
 use App\Services\Permisos\PermisoSaldoService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
 class EmpleadoSearchController extends Controller
 {
-    public function __invoke(Request $request, PermisoSaldoService $saldoService)
-    {
+    public function __invoke(
+        Request $request,
+        PermisoSaldoService $saldoService,
+        CalendarioLaboralService $calendarioService
+    ) {
         $q = trim((string) $request->query('q', ''));
         $areaId = $request->query('area_id');
 
@@ -36,7 +40,7 @@ class EmpleadoSearchController extends Controller
             ->orderBy('nombre')
             ->limit(15)
             ->get()
-            ->map(function ($empleado) use ($saldoService) {
+            ->map(function ($empleado) use ($saldoService, $calendarioService) {
                 return [
                     'id' => $empleado->id,
                     'numero_empleado' => $empleado->numero_empleado,
@@ -51,6 +55,10 @@ class EmpleadoSearchController extends Controller
                     'lider' => $empleado->lider?->nombre,
                     'correo_lider' => $empleado->lider?->correo,
                     'saldo' => $saldoService->resumen($empleado),
+                    'calendario_laboral' => [
+                        'dias' => $calendarioService->diasLaboralesEmpleado($empleado),
+                        'descripcion' => $calendarioService->descripcionHorario($empleado),
+                    ],
                 ];
             });
 

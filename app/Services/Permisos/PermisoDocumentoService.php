@@ -12,7 +12,7 @@ class PermisoDocumentoService
 {
     public function generarDocumento(PermisoSolicitud $solicitud): string
     {
-        $solicitud->loadMissing(['tipoPermiso', 'empleado.area', 'empleado.lider', 'area', 'lider']);
+        $solicitud->loadMissing(['tipoPermiso', 'empleado.area', 'empleado.lider', 'area', 'lider', 'diasSeleccionados']);
 
         $relativePath = 'permisos/documentos/permiso_' . $solicitud->id . '_' . now()->format('Ymd_His') . '.docx';
         $absolutePath = Storage::disk(config('permisos.documentos_disk', 'public'))->path($relativePath);
@@ -65,6 +65,9 @@ class PermisoDocumentoService
             'fecha_inicio' => optional($solicitud->fecha_inicio)->format('d/m/Y'),
             'fecha_fin' => optional($solicitud->fecha_fin)->format('d/m/Y'),
             'dias_solicitados' => $solicitud->dias_solicitados,
+            'fechas_solicitadas' => $solicitud->diasSeleccionados->isNotEmpty()
+                ? $solicitud->diasSeleccionados->map(fn ($dia) => $dia->fecha->format('d/m/Y'))->implode(', ')
+                : optional($solicitud->fecha_inicio)->format('d/m/Y') . ' al ' . optional($solicitud->fecha_fin)->format('d/m/Y'),
             'motivo' => $solicitud->motivo,
             'fecha_solicitud' => optional($solicitud->created_at)->format('d/m/Y H:i'),
             'estatus' => str_replace('_', ' ', $solicitud->estatus ?: 'formato generado'),

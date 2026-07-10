@@ -80,6 +80,22 @@
             </a>
         @endif
 
+
+
+        @if(Route::has('admin.permisos.empleados.importar'))
+            <a href="{{ route('admin.permisos.empleados.importar') }}"
+               class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos.empleados.importar*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                Importar vacaciones CSV/Excel
+            </a>
+        @endif
+
+        @if(Route::has('admin.permisos.calendario-laboral.index'))
+            <a href="{{ route('admin.permisos.calendario-laboral.index') }}"
+               class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos.calendario-laboral.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">
+                Horarios y días inhábiles
+            </a>
+        @endif
+
         @if(Route::has('admin.permisos.areas.index'))
             <a href="{{ route('admin.permisos.areas.index') }}"
                class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.permisos.areas.*') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">

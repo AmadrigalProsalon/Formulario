@@ -94,6 +94,19 @@
                                     <input type="text" name="puesto" value="{{ $empleado->puesto }}" placeholder="Puesto" class="w-full rounded-xl border-slate-300 mb-2">
                                     <input type="date" name="fecha_ingreso" value="{{ $empleado->fecha_ingreso?->format('Y-m-d') }}" class="w-full rounded-xl border-slate-300 mb-2">
                                     <input type="number" step="0.5" name="vacaciones_ajuste" value="{{ $empleado->vacaciones_ajuste ?? 0 }}" placeholder="Ajuste de vacaciones" class="w-full rounded-xl border-slate-300 mb-2">
+                                    @php($diasEmpleado = $empleado->dias_laborales ?? [])
+                                    <div class="rounded-xl border border-slate-200 bg-slate-50 p-3 mb-2">
+                                        <div class="text-xs font-semibold text-slate-700 mb-2">Horario laboral especial</div>
+                                        <div class="grid grid-cols-4 gap-2 text-xs">
+                                            @foreach([1 => 'Lun', 2 => 'Mar', 3 => 'Mié', 4 => 'Jue', 5 => 'Vie', 6 => 'Sáb', 7 => 'Dom'] as $numeroDia => $etiquetaDia)
+                                                <label class="inline-flex items-center gap-1">
+                                                    <input type="checkbox" name="dias_laborales[]" value="{{ $numeroDia }}" class="rounded" @checked(in_array($numeroDia, $diasEmpleado, true))>
+                                                    <span>{{ $etiquetaDia }}</span>
+                                                </label>
+                                            @endforeach
+                                        </div>
+                                        <p class="text-[11px] text-slate-500 mt-2">Si no marcas días, se usa el horario del área o L-V por defecto.</p>
+                                    </div>
                                     <label class="inline-flex items-center gap-2">
                                         <input type="checkbox" name="activo" value="1" class="rounded" @checked($empleado->activo)>
                                         <span>Activo</span>
