@@ -7,6 +7,7 @@ use App\Models\Empleado;
 use App\Models\VacacionesDiaInhabil;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Str;
 
 class CalendarioLaboralService
 {
@@ -22,19 +23,7 @@ class CalendarioLaboralService
 
     public function diasLaboralesEmpleado(Empleado $empleado): array
     {
-        $empleado->loadMissing('area');
-
-        $diasEmpleado = $this->normalizarDias($empleado->dias_laborales ?? null);
-        if ($diasEmpleado) {
-            return $diasEmpleado;
-        }
-
-        $diasArea = $this->normalizarDias($empleado->area?->dias_laborales ?? null);
-        if ($diasArea) {
-            return $diasArea;
-        }
-
-        return [1, 2, 3, 4, 5];
+        return $this->resolverHorario($empleado)['dias'];
     }
 
     public function descripcionHorario(Empleado $empleado): string
@@ -46,10 +35,16 @@ class CalendarioLaboralService
             ->implode(', ');
     }
 
+    public function origenHorario(Empleado $empleado): string
+    {
+        return $this->resolverHorario($empleado)['origen'];
+    }
+
     public function validarFechas(Empleado $empleado, array $fechas): array
     {
         $fechasNormalizadas = $this->normalizarFechas($fechas);
-        $diasLaborales = $this->diasLaboralesEmpleado($empleado);
+        $resolucion = $this->resolverHorario($empleado);
+        $diasLaborales = $resolucion['dias'];
         $festivos = $this->festivosPorFecha($fechasNormalizadas);
 
         $validas = [];
@@ -59,20 +54,20 @@ class CalendarioLaboralService
             $fecha = Carbon::parse($fechaTexto)->startOfDay();
             $diaSemana = (int) $fecha->isoWeekday();
 
-            if (! in_array($diaSemana, $diasLaborales, true)) {
-                $invalidas[] = [
-                    'fecha' => $fechaTexto,
-                    'fecha_formato' => $fecha->format('d/m/Y'),
-                    'motivo' => 'No es día laboral para este colaborador. Horario: ' . $this->descripcionHorario($empleado) . '.',
-                ];
-                continue;
-            }
-
             if (isset($festivos[$fechaTexto])) {
                 $invalidas[] = [
                     'fecha' => $fechaTexto,
                     'fecha_formato' => $fecha->format('d/m/Y'),
                     'motivo' => 'Día inhábil o festivo: ' . $festivos[$fechaTexto] . '.',
+                ];
+                continue;
+            }
+
+            if (! in_array($diaSemana, $diasLaborales, true)) {
+                $invalidas[] = [
+                    'fecha' => $fechaTexto,
+                    'fecha_formato' => $fecha->format('d/m/Y'),
+                    'motivo' => 'No es día laboral para este colaborador. Horario: ' . $this->descripcionHorario($empleado) . '.',
                 ];
                 continue;
             }
@@ -85,6 +80,7 @@ class CalendarioLaboralService
             'invalidas' => $invalidas,
             'dias_laborales' => $diasLaborales,
             'horario' => $this->descripcionHorario($empleado),
+            'origen_horario' => $resolucion['origen'],
         ];
     }
 
@@ -96,7 +92,7 @@ class CalendarioLaboralService
             try {
                 $resultado[] = Carbon::parse($fecha)->format('Y-m-d');
             } catch (\Throwable) {
-                // La validación de Request reportará fechas inválidas.
+                // La validación HTTP es la responsable de reportar formatos inválidos.
             }
         }
 
@@ -104,6 +100,77 @@ class CalendarioLaboralService
         sort($resultado);
 
         return $resultado;
+    }
+
+    private function resolverHorario(Empleado $empleado): array
+    {
+        $empleado->loadMissing('area');
+
+        $diasEmpleado = $this->normalizarDias($empleado->dias_laborales ?? null);
+        if ($diasEmpleado) {
+            return ['dias' => $diasEmpleado, 'origen' => 'Horario especial del empleado'];
+        }
+
+        $nombreEmpleado = $this->normalizarTexto($empleado->nombre);
+
+        $diasReglaEmpleado = $this->buscarRegla(
+            $nombreEmpleado,
+            (array) config('calendario_laboral.reglas_empleados', [])
+        );
+
+        if ($diasReglaEmpleado) {
+            return ['dias' => $diasReglaEmpleado, 'origen' => 'Regla especial del empleado'];
+        }
+
+        $nombreArea = $this->normalizarTexto($empleado->area?->nombre);
+
+        if (str_contains($nombreArea, 'punta mita')) {
+            $diasPuntaMita = $this->buscarRegla(
+                $nombreEmpleado,
+                (array) config('calendario_laboral.reglas_punta_mita', [])
+            );
+
+            if ($diasPuntaMita) {
+                return ['dias' => $diasPuntaMita, 'origen' => 'Regla especial de Punta Mita'];
+            }
+        }
+
+        $diasArea = $this->normalizarDias($empleado->area?->dias_laborales ?? null);
+        if ($diasArea) {
+            return ['dias' => $diasArea, 'origen' => 'Horario configurado para el área'];
+        }
+
+        $diasReglaArea = $this->buscarRegla(
+            $nombreArea,
+            (array) config('calendario_laboral.reglas_areas', [])
+        );
+
+        if ($diasReglaArea) {
+            return ['dias' => $diasReglaArea, 'origen' => 'Regla del área'];
+        }
+
+        return [
+            'dias' => $this->normalizarDias(config('calendario_laboral.dias_por_defecto', [1, 2, 3, 4, 5])),
+            'origen' => 'Horario por defecto',
+        ];
+    }
+
+    private function buscarRegla(string $texto, array $reglas): array
+    {
+        foreach ($reglas as $fragmento => $dias) {
+            $fragmentoNormalizado = $this->normalizarTexto((string) $fragmento);
+
+            if ($fragmentoNormalizado !== '' && str_contains($texto, $fragmentoNormalizado)) {
+                return $this->normalizarDias($dias);
+            }
+        }
+
+        return [];
+    }
+
+    private function normalizarTexto(?string $texto): string
+    {
+        return Str::lower(Str::ascii(trim((string) $texto)));
     }
 
     private function normalizarDias(mixed $valor): array
@@ -121,6 +188,8 @@ class CalendarioLaboralService
             array_map('intval', $valor),
             fn (int $dia) => $dia >= 1 && $dia <= 7
         )));
+
+        sort($dias);
 
         return $dias;
     }

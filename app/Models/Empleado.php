@@ -56,6 +56,12 @@ class Empleado extends Model
         return $this->hasMany(PermisoSolicitud::class, 'empleado_id');
     }
 
+
+    public function getVacacionesDisponiblesAttribute(): float
+    {
+        return round(max(0, (float) ($this->vacaciones_pendientes ?? 0)), 2);
+    }
+
     public function getEtiquetaAttribute(): string
     {
         return trim(($this->numero_empleado ? $this->numero_empleado . ' - ' : '') . $this->nombre);

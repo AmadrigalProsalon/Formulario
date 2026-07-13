@@ -56,6 +56,15 @@
             </a>
         @endif
 
+        @if(Route::has('permisos.solicitud.create'))
+            <a href="{{ route('permisos.solicitud.create') }}"
+               target="_blank"
+               rel="noopener"
+               class="block px-4 py-2.5 rounded-xl transition text-slate-300 hover:bg-slate-800 hover:text-white">
+                Formulario vacaciones y permisos
+            </a>
+        @endif
+
         @if(Route::has('admin.ausencias.calendario'))
             <a href="{{ route('admin.ausencias.calendario') }}"
                class="block px-4 py-2.5 rounded-xl transition {{ request()->routeIs('admin.ausencias.calendario') ? 'bg-white text-slate-950' : 'text-slate-300 hover:bg-slate-800 hover:text-white' }}">

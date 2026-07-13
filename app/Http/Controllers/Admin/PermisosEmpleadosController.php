@@ -206,14 +206,8 @@ class PermisosEmpleadosController extends Controller
 
                 $empleado = $this->buscarEmpleado($numeroEmpleado, $curp, $rfc, $nombre);
                 $esNuevo = ! $empleado;
-
-                $diasCorrespondientesSistema = $this->diasVacacionesCorrespondientes($fechaIngreso);
-                $saldoOficial = $diasDisponiblesExcel ?? 0;
-
-                // El Excel manda el saldo oficial. Como el sistema calcula disponibles como
-                // dias_correspondientes + vacaciones_ajuste - vacaciones_históricas_recibidas,
-                // ajustamos vacaciones_ajuste para que el saldo final del sistema coincida con Excel.
-                $vacacionesAjuste = round($saldoOficial + $diasHistoricos - $diasCorrespondientesSistema, 2);
+                $saldoOficial = round((float) ($diasDisponiblesExcel ?? 0), 2);
+                $vacacionesAjuste = 0;
 
                 $data = [
                     'area_id' => $areaId,

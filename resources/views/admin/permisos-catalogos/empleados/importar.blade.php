@@ -74,8 +74,9 @@
     <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-6 max-w-4xl">
         <h2 class="text-xl font-bold mb-2">Subir archivo de saldos de vacaciones</h2>
         <p class="text-sm text-slate-500 mb-5">
-            Puedes subir el CSV/Excel de vacaciones real. El sistema actualiza empleados existentes por <strong>CLAVE</strong>, crea empleados nuevos,
-            crea áreas/líderes y registra las fechas de vacaciones históricas para que aparezcan en el calendario.
+            Puedes subir el CSV/Excel de vacaciones real. El sistema busca empleados por <strong>CLAVE</strong>, después por <strong>CURP</strong>,
+            <strong>RFC</strong> y finalmente por nombre. Los existentes se actualizan, los nuevos se crean, los jefes directos se marcan como líderes
+            y las fechas históricas aparecen en el calendario.
         </p>
 
         <form method="POST" action="{{ route('admin.permisos.empleados.importar.store') }}" enctype="multipart/form-data" class="space-y-4">
@@ -94,7 +95,7 @@
             <div class="rounded-2xl bg-blue-50 border border-blue-200 text-blue-900 p-5">
                 <div class="font-bold mb-2">Columnas principales detectadas</div>
                 <div class="font-mono text-xs bg-white rounded-xl p-3 overflow-x-auto">
-                    CLAVE; NOMBRE; DEPARTAMENTO; PUESTO; JEFE DIRECTO; FECHA INGRESO; PROPORCIONALES
+                    CLAVE; NOMBRE; CURP; RFC; DIRECCION DE CORREO COLABORADOR; DEPARTAMENTO; PUESTO; JEFE DIRECTO; DIRECCION DE CORREO JEFE; FECHA INGRESO; PROPORCIONALES
                 </div>
             </div>
 

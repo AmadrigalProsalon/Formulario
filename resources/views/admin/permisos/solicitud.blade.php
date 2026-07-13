@@ -98,8 +98,8 @@
                     </div>
 
                     <div class="mt-4 grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
-                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Vacaciones asignadas</span><br><strong id="saldo_correspondientes">0</strong></div>
-                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Ajuste manual</span><br><strong id="saldo_ajuste">0</strong></div>
+                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Saldo oficial Excel</span><br><strong id="saldo_correspondientes">0</strong></div>
+                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Días por ley (referencia)</span><br><strong id="saldo_ajuste">0</strong></div>
                         <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Usadas / recibidas RH</span><br><strong id="saldo_usados">0</strong></div>
                         <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Pendientes formato</span><br><strong id="saldo_pendientes">0</strong></div>
                         <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Restantes</span><br><strong id="saldo_disponibles">0</strong></div>
@@ -271,11 +271,11 @@ function renderEmpleado(emp) {
     document.getElementById('card_correo_lider').textContent = emp.correo_lider ?? 'Sin correo';
     document.getElementById('card_correo').textContent = emp.correo ?? 'Sin correo';
     document.getElementById('card_horario').textContent = emp.calendario_laboral?.descripcion ?? 'Lunes a viernes';
-    document.getElementById('saldo_correspondientes').textContent = emp.saldo?.dias_correspondientes ?? 0;
-    document.getElementById('saldo_ajuste').textContent = emp.saldo?.dias_ajuste ?? 0;
-    document.getElementById('saldo_usados').textContent = emp.saldo?.dias_usados ?? 0;
-    document.getElementById('saldo_pendientes').textContent = emp.saldo?.dias_pendientes_formato ?? 0;
-    document.getElementById('saldo_disponibles').textContent = emp.saldo?.dias_disponibles ?? emp.saldo?.dias_restantes ?? 0;
+    document.getElementById('saldo_correspondientes').textContent = Number(emp.saldo?.saldo_excel ?? 0).toFixed(2);
+    document.getElementById('saldo_ajuste').textContent = Number(emp.saldo?.dias_correspondientes ?? 0).toFixed(2);
+    document.getElementById('saldo_usados').textContent = Number(emp.saldo?.dias_usados ?? 0).toFixed(2);
+    document.getElementById('saldo_pendientes').textContent = Number(emp.saldo?.dias_pendientes_formato ?? 0).toFixed(2);
+    document.getElementById('saldo_disponibles').textContent = Number(emp.saldo?.dias_disponibles ?? emp.saldo?.dias_restantes ?? 0).toFixed(2);
 
     if (empleadoAnteriorId && String(empleadoAnteriorId) !== String(emp.id)) {
         fechasVacaciones.clear();

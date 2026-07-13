@@ -34,7 +34,7 @@ class PermisoSolicitudController extends Controller
     {
         $validated = $request->validate([
             'empleado_id' => ['required', 'exists:empleados,id'],
-            'fechas' => ['required', 'array', 'min:1'],
+            'fechas' => ['required', 'array', 'min:1', 'max:60'],
             'fechas.*' => ['required', 'date', 'distinct'],
         ]);
 
@@ -64,32 +64,32 @@ class PermisoSolicitudController extends Controller
 
         if ($esVacaciones) {
             $validated = array_merge($base, $request->validate([
-                'fechas_seleccionadas' => ['required', 'array', 'min:1'],
+                'fechas_seleccionadas' => ['required', 'array', 'min:1', 'max:60'],
                 'fechas_seleccionadas.*' => ['required', 'date', 'distinct'],
-                'dias_solicitados' => ['required', 'numeric', 'min:1'],
             ], [
                 'fechas_seleccionadas.required' => 'Selecciona al menos un día de vacaciones.',
                 'fechas_seleccionadas.min' => 'Selecciona al menos un día de vacaciones.',
+                'fechas_seleccionadas.max' => 'No puedes seleccionar más de 60 fechas en una sola solicitud.',
             ]));
 
             $fechas = $calendarioService->normalizarFechas($validated['fechas_seleccionadas']);
+
+            if (count($fechas) !== count($validated['fechas_seleccionadas'])) {
+                return back()->withInput()->with('error', 'Las fechas de vacaciones no pueden repetirse ni tener un formato inválido.');
+            }
+
             $resultadoCalendario = $calendarioService->validarFechas($empleado, $fechas);
 
-            if ($resultadoCalendario['invalidas']) {
+            if (! empty($resultadoCalendario['invalidas'])) {
                 $detalle = collect($resultadoCalendario['invalidas'])
                     ->map(fn ($item) => $item['fecha_formato'] . ': ' . $item['motivo'])
-                    ->take(5)
+                    ->take(8)
                     ->implode(' | ');
 
                 return back()->withInput()->with('error', 'Hay fechas no permitidas: ' . $detalle);
             }
 
-            $diasCalculados = count($fechas);
-
-            if ((float) $validated['dias_solicitados'] !== (float) $diasCalculados) {
-                return back()->withInput()->with('error', 'La cantidad de días solicitados debe coincidir con las fechas seleccionadas. Seleccionaste ' . $diasCalculados . ' día(s).');
-            }
-
+            $diasSolicitados = (float) count($fechas);
             $fechaInicio = $fechas[0];
             $fechaFin = $fechas[count($fechas) - 1];
 
@@ -104,8 +104,9 @@ class PermisoSolicitudController extends Controller
             $fechaInicio = $validated['fecha_inicio'];
             $fechaFin = $validated['fecha_fin'];
             $fechas = [];
+            $diasSolicitados = (float) $validated['dias_solicitados'];
 
-            $cruce = PermisoSolicitud::existeCruceDeFechas(
+            $cruce = $this->buscarCrucePorRango(
                 $empleado->id,
                 $fechaInicio,
                 $fechaFin
@@ -113,17 +114,32 @@ class PermisoSolicitudController extends Controller
         }
 
         if ($cruce) {
-            return back()->withInput()->with('error', 'Este colaborador ya tiene una solicitud activa que cruza con una de las fechas seleccionadas: #' . $cruce->id . '.');
+            return back()->withInput()->with(
+                'error',
+                'Este colaborador ya tiene una solicitud activa que cruza con una de las fechas seleccionadas: #' . $cruce->id . '.'
+            );
         }
 
-        if (! $saldoService->validarSaldoSuficiente($empleado, $tipoPermiso, (float) $validated['dias_solicitados'])) {
+        if (! $saldoService->validarSaldoSuficiente($empleado, $tipoPermiso, $diasSolicitados)) {
             $saldo = $saldoService->resumen($empleado);
 
-            return back()->withInput()->with('error', 'No puedes solicitar ' . $validated['dias_solicitados'] . ' días. Disponible actual de vacaciones: ' . $saldo['dias_disponibles'] . ' días. Los pendientes de formato no descuentan hasta que RH marque formato recibido.');
+            return back()->withInput()->with(
+                'error',
+                'No puedes solicitar ' . $diasSolicitados . ' día(s). Disponible actual de vacaciones: ' .
+                $saldo['dias_disponibles'] .
+                ' día(s). Los pendientes de formato no descuentan hasta que RH marque formato recibido.'
+            );
         }
 
         try {
-            $solicitud = DB::transaction(function () use ($validated, $empleado, $fechaInicio, $fechaFin, $fechas) {
+            $solicitud = DB::transaction(function () use (
+                $validated,
+                $empleado,
+                $fechaInicio,
+                $fechaFin,
+                $fechas,
+                $diasSolicitados
+            ) {
                 $solicitud = PermisoSolicitud::create([
                     'tipo_permiso_id' => $validated['tipo_permiso_id'],
                     'empleado_id' => $empleado->id,
@@ -131,7 +147,7 @@ class PermisoSolicitudController extends Controller
                     'lider_id' => $empleado->lider_id,
                     'fecha_inicio' => Carbon::parse($fechaInicio),
                     'fecha_fin' => Carbon::parse($fechaFin),
-                    'dias_solicitados' => $validated['dias_solicitados'],
+                    'dias_solicitados' => $diasSolicitados,
                     'motivo' => $validated['motivo'] ?? null,
                     'estatus' => 'formato_generado',
                     'formato_recibido' => false,
@@ -153,7 +169,10 @@ class PermisoSolicitudController extends Controller
             $documentoRelativePath = $documentoService->generarDocumento($solicitud);
             $documentoAbsolutePath = $documentoService->absolutePath($documentoRelativePath);
 
-            $this->enviarDocumento($solicitud->fresh(['empleado', 'lider', 'area', 'tipoPermiso', 'diasSeleccionados']), $documentoAbsolutePath);
+            $this->enviarDocumento(
+                $solicitud->fresh(['empleado', 'lider', 'area', 'tipoPermiso', 'diasSeleccionados']),
+                $documentoAbsolutePath
+            );
 
             $solicitud->update([
                 'estatus' => 'formato_enviado',
@@ -176,6 +195,44 @@ class PermisoSolicitudController extends Controller
 
             return back()->withInput()->with('error', 'Ocurrió un error al generar o enviar el formato. Contacta a Sistemas.');
         }
+    }
+
+
+    private function buscarCrucePorRango(int $empleadoId, string $fechaInicio, string $fechaFin): ?PermisoSolicitud
+    {
+        $inicio = Carbon::parse($fechaInicio)->startOfDay();
+        $fin = Carbon::parse($fechaFin)->startOfDay();
+
+        $solicitudes = PermisoSolicitud::with('diasSeleccionados')
+            ->where('empleado_id', $empleadoId)
+            ->whereIn('estatus', config('permisos.estatus_activos_para_cruce', [
+                'formato_generado',
+                'formato_enviado',
+                'formato_pendiente',
+                'formato_recibido',
+                'con_observaciones',
+            ]))
+            ->whereDate('fecha_inicio', '<=', $fin->format('Y-m-d'))
+            ->whereDate('fecha_fin', '>=', $inicio->format('Y-m-d'))
+            ->get();
+
+        foreach ($solicitudes as $solicitud) {
+            if ($solicitud->diasSeleccionados->isNotEmpty()) {
+                $cruza = $solicitud->diasSeleccionados->contains(
+                    fn ($dia) => $dia->fecha->betweenIncluded($inicio, $fin)
+                );
+
+                if ($cruza) {
+                    return $solicitud;
+                }
+
+                continue;
+            }
+
+            return $solicitud;
+        }
+
+        return null;
     }
 
     private function buscarCrucePorDias(int $empleadoId, array $fechas): ?PermisoSolicitud
@@ -209,6 +266,7 @@ class PermisoSolicitudController extends Controller
                 if (array_intersect($fechas, $diasGuardados)) {
                     return $solicitud;
                 }
+
                 continue;
             }
 
@@ -241,7 +299,9 @@ class PermisoSolicitudController extends Controller
 
         foreach ($correos as $item) {
             try {
-                Mail::to($item['correo'])->send(new PermisoDocumentoFisicoMail($solicitud, $documentoAbsolutePath, $item['tipo']));
+                Mail::to($item['correo'])->send(
+                    new PermisoDocumentoFisicoMail($solicitud, $documentoAbsolutePath, $item['tipo'])
+                );
 
                 DB::table('permiso_documento_envios')->insert([
                     'permiso_solicitud_id' => $solicitud->id,

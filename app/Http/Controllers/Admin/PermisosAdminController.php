@@ -19,7 +19,7 @@ class PermisosAdminController extends Controller
 {
     public function index(Request $request)
     {
-        $query = PermisoSolicitud::with(['tipoPermiso', 'empleado.area', 'lider', 'area'])
+        $query = PermisoSolicitud::with(['tipoPermiso', 'empleado.area', 'lider', 'area', 'diasSeleccionados'])
             ->latest();
 
         if ($request->filled('area_id')) {
@@ -101,6 +101,7 @@ class PermisosAdminController extends Controller
             'recibidoPor',
             'archivoFirmadoPor',
             'historial.usuario',
+            'diasSeleccionados',
         ]);
 
         $envios = DB::table('permiso_documento_envios')

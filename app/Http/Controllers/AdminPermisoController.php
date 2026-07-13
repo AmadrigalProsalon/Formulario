@@ -112,12 +112,9 @@ class AdminPermisoController extends Controller
         DB::transaction(function () use ($solicitud) {
             $solicitud->load(['tipoPermiso', 'empleado']);
 
-            if ($solicitud->tipoPermiso?->descuenta_vacaciones) {
-                if ($solicitud->formato_recibido) {
-                    $solicitud->empleado->decrement('vacaciones_usados', $solicitud->dias_solicitados);
-                } else {
-                    $solicitud->empleado->decrement('vacaciones_pendientes', $solicitud->dias_solicitados);
-                }
+            if ($solicitud->tipoPermiso?->descuenta_vacaciones && $solicitud->formato_recibido) {
+                $solicitud->empleado->decrement('vacaciones_usados', $solicitud->dias_solicitados);
+                $solicitud->empleado->increment('vacaciones_pendientes', $solicitud->dias_solicitados);
             }
 
             $solicitud->update([
