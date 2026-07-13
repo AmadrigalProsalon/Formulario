@@ -1,119 +1,17 @@
 @extends('admin.layout')
-
-@section('title', 'Calendario laboral')
-@section('page_title', 'Calendario laboral')
-@section('page_description', 'Configura días de trabajo por área y registra días festivos o inhábiles.')
-
+@section('title','Calendario laboral')
+@section('page_title','Calendario laboral')
+@section('page_description','Configura horarios por área y administra días festivos o inhábiles.')
 @section('content')
-    @if(session('success'))
-        <div class="mb-5 rounded-2xl bg-emerald-100 border border-emerald-300 text-emerald-800 px-5 py-4">
-            {{ session('success') }}
-        </div>
-    @endif
+<div class="mb-7 overflow-hidden rounded-[2rem] bg-gradient-to-br from-slate-950 via-blue-950 to-cyan-900 p-7 text-white shadow-xl relative"><div class="absolute -right-16 -top-16 h-56 w-56 rounded-full bg-cyan-300/20 blur-3xl"></div><div class="relative"><div class="text-xs font-bold uppercase tracking-[.22em] text-cyan-200">Configuración laboral</div><h1 class="mt-2 text-3xl font-black md:text-4xl">Horarios y días inhábiles</h1><p class="mt-2 max-w-2xl text-sm text-cyan-100 md:text-base">Define qué días trabaja cada área y bloquea fechas especiales para evitar solicitudes incorrectas.</p></div></div>
 
-    @if($errors->any())
-        <div class="mb-5 rounded-2xl bg-red-100 border border-red-300 text-red-800 px-5 py-4">
-            <ul class="list-disc pl-5">
-                @foreach($errors->all() as $error)
-                    <li>{{ $error }}</li>
-                @endforeach
-            </ul>
-        </div>
-    @endif
+<div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-3"><div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div class="text-xs font-bold uppercase text-slate-400">Áreas configurables</div><div class="mt-2 text-3xl font-black">{{ $areas->count() }}</div></div><div class="rounded-3xl border border-rose-200 bg-gradient-to-br from-rose-50 to-white p-5 shadow-sm"><div class="text-xs font-bold uppercase text-rose-600">Inhábiles registrados</div><div class="mt-2 text-3xl font-black text-rose-700">{{ $diasInhabiles->total() }}</div></div><div class="col-span-2 rounded-3xl border border-blue-200 bg-gradient-to-br from-blue-50 to-white p-5 shadow-sm lg:col-span-1"><div class="text-xs font-bold uppercase text-blue-600">Prioridad</div><div class="mt-2 text-sm font-bold text-blue-900">Horario personal → Área → L–V</div></div></div>
 
-    <div class="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-            <h2 class="text-lg font-bold mb-1">Horarios por área</h2>
-            <p class="text-sm text-slate-500 mb-5">El horario individual del empleado tiene prioridad sobre el horario del área.</p>
+<div class="grid grid-cols-1 gap-6 xl:grid-cols-5">
+    <section class="xl:col-span-3 rounded-3xl border border-slate-200 bg-white shadow-sm overflow-hidden"><div class="border-b border-slate-100 bg-slate-50/80 p-6"><h2 class="text-xl font-black text-slate-950">Horarios por área</h2><p class="mt-1 text-sm text-slate-500">Selecciona los días laborales y guarda cada área de forma independiente.</p></div><div class="grid grid-cols-1 gap-4 p-5 md:grid-cols-2">@foreach($areas as $area)@php($diasArea=$area->dias_laborales ?? [1,2,3,4,5])<form method="POST" action="{{ route('admin.permisos.calendario-laboral.areas.update',$area) }}" class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm hover:border-blue-200 hover:shadow-md">@csrf @method('PUT')<div class="mb-4 flex items-start justify-between gap-3"><div><h3 class="font-black text-slate-900">{{ $area->nombre }}</h3><p class="mt-1 text-xs text-slate-500">{{ count($diasArea) }} día(s) laborales</p></div><button class="rounded-xl bg-slate-950 px-3 py-2 text-xs font-bold text-white hover:bg-slate-800">Guardar</button></div><div class="grid grid-cols-4 gap-2">@foreach($nombresDias as $numero=>$nombre)<label class="cursor-pointer"><input type="checkbox" name="dias_laborales[]" value="{{ $numero }}" class="peer sr-only" @checked(in_array($numero,$diasArea,true))><span class="flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-slate-50 text-xs font-bold text-slate-500 peer-checked:border-blue-500 peer-checked:bg-blue-600 peer-checked:text-white">{{ $nombre }}</span></label>@endforeach</div></form>@endforeach</div></section>
 
-            <div class="space-y-4">
-                @foreach($areas as $area)
-                    <form method="POST" action="{{ route('admin.permisos.calendario-laboral.areas.update', $area) }}" class="rounded-2xl border border-slate-200 p-4">
-                        @csrf
-                        @method('PUT')
-                        @php($diasArea = $area->dias_laborales ?? [1,2,3,4,5])
+    <div class="space-y-6 xl:col-span-2"><section class="rounded-3xl border border-slate-200 bg-white p-6 shadow-sm"><div class="mb-5 flex items-center gap-3"><div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-rose-100 text-xl text-rose-700">＋</div><div><h2 class="text-xl font-black">Agregar día inhábil</h2><p class="text-sm text-slate-500">Se bloqueará en solicitudes de vacaciones.</p></div></div><form method="POST" action="{{ route('admin.permisos.calendario-laboral.inhabiles.store') }}" class="space-y-4">@csrf<div><label class="mb-1 block text-sm font-bold">Fecha</label><input type="date" name="fecha" class="w-full rounded-xl border-slate-300 focus:border-rose-500 focus:ring-rose-500" required></div><div><label class="mb-1 block text-sm font-bold">Nombre</label><input type="text" name="nombre" class="w-full rounded-xl border-slate-300" placeholder="Ej. Navidad" required></div><div><label class="mb-1 block text-sm font-bold">Tipo</label><select name="tipo" class="w-full rounded-xl border-slate-300"><option value="oficial">Festivo oficial</option><option value="empresa">Día otorgado por la empresa</option><option value="especial">Inhábil especial</option></select></div><button class="w-full rounded-xl bg-gradient-to-r from-rose-600 to-orange-500 px-5 py-3 font-black text-white shadow-md hover:from-rose-700 hover:to-orange-600">Guardar día inhábil</button></form></section>
 
-                        <div class="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-3">
-                            <div>
-                                <div class="font-semibold text-slate-900">{{ $area->nombre }}</div>
-                                <div class="flex flex-wrap gap-3 mt-2 text-sm">
-                                    @foreach($nombresDias as $numero => $nombre)
-                                        <label class="inline-flex items-center gap-1">
-                                            <input type="checkbox" name="dias_laborales[]" value="{{ $numero }}" class="rounded" @checked(in_array($numero, $diasArea, true))>
-                                            <span>{{ $nombre }}</span>
-                                        </label>
-                                    @endforeach
-                                </div>
-                            </div>
-
-                            <button class="rounded-xl bg-slate-950 text-white px-4 py-2 hover:bg-slate-800">Guardar</button>
-                        </div>
-                    </form>
-                @endforeach
-            </div>
-        </div>
-
-        <div class="space-y-6">
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 p-5">
-                <h2 class="text-lg font-bold mb-1">Agregar día inhábil / festivo</h2>
-                <p class="text-sm text-slate-500 mb-4">Estos días serán bloqueados para solicitudes de vacaciones.</p>
-
-                <form method="POST" action="{{ route('admin.permisos.calendario-laboral.inhabiles.store') }}" class="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    @csrf
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">Fecha</label>
-                        <input type="date" name="fecha" class="w-full rounded-xl border-slate-300" required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">Nombre</label>
-                        <input type="text" name="nombre" class="w-full rounded-xl border-slate-300" placeholder="Ej. Navidad" required>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">Tipo</label>
-                        <input type="text" name="tipo" class="w-full rounded-xl border-slate-300" value="oficial">
-                    </div>
-                    <div class="md:col-span-3 text-right">
-                        <button class="rounded-xl bg-slate-950 text-white px-5 py-2.5 hover:bg-slate-800">Guardar día inhábil</button>
-                    </div>
-                </form>
-            </div>
-
-            <div class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden">
-                <div class="p-5 border-b border-slate-200">
-                    <h2 class="text-lg font-bold">Días inhábiles registrados</h2>
-                </div>
-                <div class="overflow-x-auto">
-                    <table class="w-full text-sm">
-                        <thead class="bg-slate-50 text-slate-600">
-                            <tr>
-                                <th class="text-left p-3">Fecha</th>
-                                <th class="text-left p-3">Nombre</th>
-                                <th class="text-left p-3">Tipo</th>
-                                <th class="text-right p-3">Acción</th>
-                            </tr>
-                        </thead>
-                        <tbody class="divide-y divide-slate-100">
-                            @forelse($diasInhabiles as $dia)
-                                <tr>
-                                    <td class="p-3">{{ $dia->fecha?->format('d/m/Y') }}</td>
-                                    <td class="p-3 font-semibold">{{ $dia->nombre }}</td>
-                                    <td class="p-3">{{ $dia->tipo }}</td>
-                                    <td class="p-3 text-right">
-                                        <form method="POST" action="{{ route('admin.permisos.calendario-laboral.inhabiles.destroy', $dia) }}" onsubmit="return confirm('¿Eliminar este día inhábil?')">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button class="text-rose-600 hover:text-rose-800 font-semibold">Eliminar</button>
-                                        </form>
-                                    </td>
-                                </tr>
-                            @empty
-                                <tr><td colspan="4" class="p-6 text-center text-slate-500">No hay días inhábiles registrados.</td></tr>
-                            @endforelse
-                        </tbody>
-                    </table>
-                </div>
-                <div class="p-4 border-t border-slate-200">{{ $diasInhabiles->links() }}</div>
-            </div>
-        </div>
-    </div>
+    <section class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm"><div class="border-b border-slate-100 bg-slate-50/80 p-5"><h2 class="text-lg font-black">Días registrados</h2><p class="text-sm text-slate-500">Ordenados del más reciente al más antiguo.</p></div><div class="divide-y divide-slate-100">@forelse($diasInhabiles as $dia)<div class="flex items-center gap-4 p-4"><div class="flex h-12 w-12 shrink-0 flex-col items-center justify-center rounded-2xl bg-rose-50 text-rose-700"><span class="text-lg font-black leading-none">{{ $dia->fecha?->format('d') }}</span><span class="text-[10px] uppercase">{{ $dia->fecha?->translatedFormat('M') }}</span></div><div class="min-w-0 flex-1"><div class="truncate font-bold text-slate-900">{{ $dia->nombre }}</div><div class="text-xs text-slate-500">{{ $dia->fecha?->format('d/m/Y') }} · {{ ucfirst($dia->tipo) }}</div></div><form method="POST" action="{{ route('admin.permisos.calendario-laboral.inhabiles.destroy',$dia) }}" onsubmit="return confirm('¿Eliminar este día inhábil?')">@csrf @method('DELETE')<button class="rounded-xl bg-rose-50 px-3 py-2 text-xs font-bold text-rose-700 hover:bg-rose-100">Eliminar</button></form></div>@empty<div class="p-10 text-center text-slate-500">No hay días inhábiles registrados.</div>@endforelse</div><div class="border-t border-slate-100 p-5">{{ $diasInhabiles->links('vendor.pagination.rh') }}</div></section></div>
+</div>
 @endsection
