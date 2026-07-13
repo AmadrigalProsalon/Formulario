@@ -50,26 +50,24 @@ class PermisoSaldoService
     public function resumen(Empleado $empleado): array
     {
         $correspondientes = $this->diasVacacionesCorrespondientes($empleado->fecha_ingreso);
-        $usados = $this->diasUsados($empleado);
-        $pendientes = $this->diasPendientes($empleado);
+        $usados = round($this->diasUsados($empleado), 2);
+        $pendientes = round($this->diasPendientes($empleado), 2);
 
-        // El saldo oficial viene del Excel y se guarda directamente en
-        // empleados.vacaciones_pendientes. No se vuelve a calcular usando
-        // antigüedad, ajustes ni vacaciones históricas.
+        // Fuente oficial: el saldo cargado por RH desde el Excel.
+        // No se recalcula con antigüedad, ajuste ni vacaciones históricas.
         $saldoOficial = round((float) ($empleado->vacaciones_pendientes ?? 0), 2);
 
         return [
             'fecha_ingreso' => $empleado->fecha_ingreso?->format('Y-m-d'),
             'fecha_ingreso_formato' => $empleado->fecha_ingreso?->format('d/m/Y'),
 
-            // Información de referencia, no participa en el saldo disponible.
+            // Información de consulta; no altera el saldo disponible.
             'dias_correspondientes' => $correspondientes,
             'dias_ajuste' => round((float) ($empleado->vacaciones_ajuste ?? 0), 2),
             'dias_asignados_total' => $saldoOficial,
-            'dias_usados' => round($usados, 2),
-            'dias_pendientes_formato' => round($pendientes, 2),
+            'dias_usados' => $usados,
+            'dias_pendientes_formato' => $pendientes,
 
-            // Fuente oficial: saldo importado desde Excel.
             'saldo_excel' => $saldoOficial,
             'dias_disponibles' => max(0, $saldoOficial),
             'dias_restantes' => max(0, $saldoOficial),

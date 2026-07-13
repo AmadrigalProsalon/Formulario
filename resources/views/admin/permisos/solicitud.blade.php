@@ -3,16 +3,18 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solicitud de permiso / ausencia</title>
+    <title>Solicitud de vacaciones y permisos</title>
     @vite(['resources/js/app.js'])
 </head>
-<body class="bg-slate-100 text-slate-800">
+<body class="bg-gradient-to-br from-slate-100 via-white to-blue-50 text-slate-800">
     <div class="max-w-5xl mx-auto py-10 px-4">
-        <div class="rounded-3xl bg-slate-950 text-white p-8 mb-6 shadow-sm">
-            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div class="rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white p-8 md:p-10 mb-7 shadow-xl shadow-slate-900/10 overflow-hidden relative">
+            <div class="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-blue-500/20 blur-2xl"></div>
+            <div class="absolute right-24 -bottom-24 w-48 h-48 rounded-full bg-cyan-400/10 blur-2xl"></div>
+            <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                 <div>
                     <p class="text-slate-300 text-sm uppercase tracking-wide">Recursos Humanos</p>
-                    <h1 class="text-3xl font-bold mt-2">Solicitud de permiso / ausencia</h1>
+                    <h1 class="text-3xl font-bold mt-2">Solicitud de vacaciones y permisos</h1>
                     <p class="text-slate-300 mt-2 max-w-2xl">
                         Busca al colaborador por CURP, RFC, nombre, correo o número de empleado. El sistema cargará sus datos, líder, saldo de vacaciones y calendario laboral.
                     </p>
@@ -99,10 +101,10 @@
 
                     <div class="mt-4 grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
                         <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Saldo oficial Excel</span><br><strong id="saldo_correspondientes">0</strong></div>
-                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Días por ley (referencia)</span><br><strong id="saldo_ajuste">0</strong></div>
+                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Días por ley</span><br><strong id="saldo_ajuste">0</strong></div>
                         <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Usadas / recibidas RH</span><br><strong id="saldo_usados">0</strong></div>
                         <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Pendientes formato</span><br><strong id="saldo_pendientes">0</strong></div>
-                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Restantes</span><br><strong id="saldo_disponibles">0</strong></div>
+                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Disponible</span><br><strong id="saldo_disponibles">0</strong></div>
                     </div>
 
                     <p class="mt-3 text-xs text-blue-800">
@@ -115,8 +117,8 @@
                 <div class="flex items-center gap-3 mb-5">
                     <span class="w-9 h-9 rounded-full bg-slate-950 text-white flex items-center justify-center font-bold">2</span>
                     <div>
-                        <h2 class="text-xl font-bold">Datos del permiso</h2>
-                        <p class="text-sm text-slate-500">En vacaciones se validan saldo, horario laboral y días inhábiles. Puedes seleccionar fechas salteadas.</p>
+                        <h2 class="text-xl font-bold">Selecciona el permiso y las fechas</h2>
+                        <p class="text-sm text-slate-500">En vacaciones puedes elegir días consecutivos o salteados. Cada fecha válida cuenta como un día y será exactamente lo que se descontará cuando RH reciba el formato.</p>
                     </div>
                 </div>
 
@@ -139,8 +141,8 @@
 
                     <div>
                         <label class="block text-sm font-semibold mb-1">Días solicitados</label>
-                        <input type="number" step="0.5" min="0.5" name="dias_solicitados" id="dias_solicitados" value="{{ old('dias_solicitados') }}" class="w-full rounded-xl border-slate-300" required>
-                        <p id="dias_help" class="hidden text-xs text-slate-500 mt-1">En vacaciones se calcula automáticamente con las fechas válidas seleccionadas.</p>
+                        <input type="number" step="0.5" min="0.5" name="dias_solicitados" id="dias_solicitados" value="{{ old('dias_solicitados') }}" class="w-full rounded-xl border-slate-300 bg-slate-50 font-bold text-lg" required>
+                        <p id="dias_help" class="hidden text-xs text-slate-500 mt-1">Se calcula automáticamente: 1 fecha seleccionada = 1 día a descontar.</p>
                     </div>
                 </div>
 
@@ -159,22 +161,33 @@
                 <div id="vacaciones_fechas_group" class="hidden mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
                     <div class="flex flex-col md:flex-row md:items-end gap-3">
                         <div class="flex-1">
-                            <label class="block text-sm font-semibold mb-1">Agregar día de vacaciones</label>
+                            <label class="block text-sm font-semibold mb-1">Elige una fecha de vacaciones</label>
                             <input type="date" id="fecha_vacacion_input" class="w-full rounded-xl border-slate-300">
                         </div>
                         <button type="button" id="agregar_fecha_vacacion" class="rounded-xl bg-slate-950 text-white px-5 py-3 font-semibold hover:bg-slate-800">
-                            Agregar día
+                            Añadir fecha
                         </button>
                     </div>
 
                     <div class="mt-3 text-sm text-slate-600">
-                        Puedes agregar días continuos o salteados. El sistema no permitirá días fuera del horario laboral del colaborador ni días festivos/inhábiles registrados.
+                        Selecciona solo los días que realmente tomarás. Puedes elegir fechas separadas; el sistema validará horario laboral, días festivos, días inhábiles y solicitudes duplicadas.
                     </div>
 
                     <div id="mensaje_fechas" class="hidden mt-3 rounded-xl px-4 py-3 text-sm"></div>
 
+                    <div class="mt-5 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-center rounded-2xl bg-white border border-blue-100 p-4">
+                        <div>
+                            <div class="text-sm font-semibold text-slate-900">Resumen de vacaciones</div>
+                            <div class="text-xs text-slate-500 mt-1">Solo las fechas mostradas abajo se guardarán y descontarán.</div>
+                        </div>
+                        <div class="rounded-2xl bg-blue-600 text-white px-5 py-3 text-center min-w-32">
+                            <div class="text-xs uppercase tracking-wide text-blue-100">Total</div>
+                            <div class="text-2xl font-black"><span id="contador_fechas">0</span> día(s)</div>
+                        </div>
+                    </div>
+
                     <div class="mt-4">
-                        <div class="text-sm font-semibold mb-2">Días seleccionados</div>
+                        <div class="text-sm font-semibold mb-2">Fechas elegidas para descontar</div>
                         <div id="fechas_vacaciones_lista" class="flex flex-wrap gap-2"></div>
                         <div id="fechas_hidden"></div>
                     </div>
@@ -192,7 +205,7 @@
                     Correo RH configurado: <strong>rhformularios@prosalon.mx</strong>.
                 </div>
                 <button class="rounded-xl bg-slate-950 text-white px-8 py-3 hover:bg-slate-800 font-semibold">
-                    Generar y enviar formato
+                    Enviar solicitud y generar formato
                 </button>
             </div>
         </form>
@@ -216,6 +229,7 @@ const agregarFechaBtn = document.getElementById('agregar_fecha_vacacion');
 const fechasLista = document.getElementById('fechas_vacaciones_lista');
 const fechasHidden = document.getElementById('fechas_hidden');
 const mensajeFechas = document.getElementById('mensaje_fechas');
+const contadorFechas = document.getElementById('contador_fechas');
 const csrfToken = document.querySelector('input[name="_token"]').value;
 const urlValidarFechas = @json(route('permisos.fechas.validar'));
 
@@ -271,7 +285,7 @@ function renderEmpleado(emp) {
     document.getElementById('card_correo_lider').textContent = emp.correo_lider ?? 'Sin correo';
     document.getElementById('card_correo').textContent = emp.correo ?? 'Sin correo';
     document.getElementById('card_horario').textContent = emp.calendario_laboral?.descripcion ?? 'Lunes a viernes';
-    document.getElementById('saldo_correspondientes').textContent = Number(emp.saldo?.saldo_excel ?? 0).toFixed(2);
+    document.getElementById('saldo_correspondientes').textContent = Number(emp.saldo?.saldo_excel ?? emp.saldo?.dias_disponibles ?? 0).toFixed(2);
     document.getElementById('saldo_ajuste').textContent = Number(emp.saldo?.dias_correspondientes ?? 0).toFixed(2);
     document.getElementById('saldo_usados').textContent = Number(emp.saldo?.dias_usados ?? 0).toFixed(2);
     document.getElementById('saldo_pendientes').textContent = Number(emp.saldo?.dias_pendientes_formato ?? 0).toFixed(2);
@@ -318,7 +332,7 @@ async function buscar() {
                 <div class="font-semibold text-slate-900">${emp.nombre ?? ''}</div>
                 <div class="text-xs text-slate-500">CURP: ${emp.curp ?? 'Sin CURP'} · RFC: ${emp.rfc ?? 'Sin RFC'} · No: ${emp.numero_empleado ?? 'Sin número'}</div>
                 <div class="text-xs text-slate-500">${emp.area ?? 'Sin área'} · ${emp.puesto ?? 'Sin puesto'} · Ingreso: ${emp.fecha_ingreso_formato ?? 'Sin fecha'}</div>
-                <div class="text-xs text-slate-500">Líder: ${emp.lider ?? 'Sin líder'} · Restantes: ${emp.saldo?.dias_disponibles ?? 0} días · Horario: ${emp.calendario_laboral?.descripcion ?? 'L-V'}</div>
+                <div class="text-xs text-slate-500">Líder: ${emp.lider ?? 'Sin líder'} · Disponible: ${emp.saldo?.dias_disponibles ?? 0} días · Horario: ${emp.calendario_laboral?.descripcion ?? 'L-V'}</div>
             `;
             item.addEventListener('click', () => renderEmpleado(emp));
             results.appendChild(item);
@@ -459,7 +473,7 @@ agregarFechaBtn.addEventListener('click', async function () {
         mostrarMensajeFechas(e.message || 'No se pudo validar la fecha.', 'error');
     } finally {
         agregarFechaBtn.disabled = false;
-        agregarFechaBtn.textContent = 'Agregar día';
+        agregarFechaBtn.textContent = 'Añadir fecha';
     }
 });
 

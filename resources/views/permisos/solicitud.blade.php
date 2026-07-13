@@ -3,18 +3,20 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solicitud de permiso / ausencia</title>
+    <title>Solicitud de vacaciones y permisos</title>
     @vite(['resources/js/app.js'])
 </head>
-<body class="bg-slate-100 text-slate-800">
+<body class="bg-gradient-to-br from-slate-100 via-white to-blue-50 text-slate-800">
     <div class="max-w-5xl mx-auto py-10 px-4">
-        <div class="rounded-3xl bg-slate-950 text-white p-8 mb-6 shadow-sm">
-            <div class="flex flex-col md:flex-row md:items-end md:justify-between gap-4">
+        <div class="rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white p-8 md:p-10 mb-7 shadow-xl shadow-slate-900/10 overflow-hidden relative">
+            <div class="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-blue-500/20 blur-2xl"></div>
+            <div class="absolute right-24 -bottom-24 w-48 h-48 rounded-full bg-cyan-400/10 blur-2xl"></div>
+            <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-4">
                 <div>
                     <p class="text-slate-300 text-sm uppercase tracking-wide">Recursos Humanos</p>
-                    <h1 class="text-3xl font-bold mt-2">Solicitud de permiso / ausencia</h1>
+                    <h1 class="text-3xl font-bold mt-2">Solicitud de vacaciones y permisos</h1>
                     <p class="text-slate-300 mt-2 max-w-2xl">
-                        Busca al colaborador por CURP, RFC, nombre, correo o número de empleado. El sistema cargará sus datos, líder y saldo de vacaciones.
+                        Busca al colaborador por CURP, RFC, nombre, correo o número de empleado. El sistema cargará sus datos, líder, saldo de vacaciones y calendario laboral.
                     </p>
                 </div>
 
@@ -90,18 +92,19 @@
                         <div><span class="font-semibold">Fecha ingreso:</span><br><span id="card_fecha_ingreso"></span></div>
                     </div>
 
-                    <div class="mt-4 grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
                         <div><span class="font-semibold">Jefe / líder:</span><br><span id="card_lider"></span></div>
                         <div><span class="font-semibold">Correo líder:</span><br><span id="card_correo_lider"></span></div>
                         <div><span class="font-semibold">Correo colaborador:</span><br><span id="card_correo"></span></div>
+                        <div><span class="font-semibold">Horario laboral:</span><br><span id="card_horario"></span></div>
                     </div>
 
                     <div class="mt-4 grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
                         <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Saldo oficial Excel</span><br><strong id="saldo_correspondientes">0</strong></div>
-                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Días por ley (referencia)</span><br><strong id="saldo_ajuste">0</strong></div>
+                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Días por ley</span><br><strong id="saldo_ajuste">0</strong></div>
                         <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Usadas / recibidas RH</span><br><strong id="saldo_usados">0</strong></div>
                         <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Pendientes formato</span><br><strong id="saldo_pendientes">0</strong></div>
-                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Restantes</span><br><strong id="saldo_disponibles">0</strong></div>
+                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Disponible</span><br><strong id="saldo_disponibles">0</strong></div>
                     </div>
 
                     <p class="mt-3 text-xs text-blue-800">
@@ -114,18 +117,22 @@
                 <div class="flex items-center gap-3 mb-5">
                     <span class="w-9 h-9 rounded-full bg-slate-950 text-white flex items-center justify-center font-bold">2</span>
                     <div>
-                        <h2 class="text-xl font-bold">Datos del permiso</h2>
-                        <p class="text-sm text-slate-500">Para vacaciones se valida saldo, pero no se descuenta hasta que RH marque formato recibido.</p>
+                        <h2 class="text-xl font-bold">Selecciona el permiso y las fechas</h2>
+                        <p class="text-sm text-slate-500">En vacaciones puedes elegir días consecutivos o salteados. Cada fecha válida cuenta como un día y será exactamente lo que se descontará cuando RH reciba el formato.</p>
                     </div>
                 </div>
 
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                         <label class="block text-sm font-semibold mb-1">Tipo de permiso</label>
-                        <select name="tipo_permiso_id" class="w-full rounded-xl border-slate-300" required>
+                        <select name="tipo_permiso_id" id="tipo_permiso_id" class="w-full rounded-xl border-slate-300" required>
                             <option value="">Selecciona una opción</option>
                             @foreach($tiposPermisos as $tipo)
-                                <option value="{{ $tipo->id }}" @selected(old('tipo_permiso_id') == $tipo->id)>
+                                <option
+                                    value="{{ $tipo->id }}"
+                                    data-vacaciones="{{ ($tipo->slug === 'vacaciones' || $tipo->descuenta_vacaciones) ? '1' : '0' }}"
+                                    @selected(old('tipo_permiso_id') == $tipo->id)
+                                >
                                     {{ $tipo->nombre }}
                                 </option>
                             @endforeach
@@ -134,23 +141,61 @@
 
                     <div>
                         <label class="block text-sm font-semibold mb-1">Días solicitados</label>
-                        <input type="number" step="0.5" min="0.5" name="dias_solicitados" value="{{ old('dias_solicitados') }}" class="w-full rounded-xl border-slate-300" required>
+                        <input type="number" step="0.5" min="0.5" name="dias_solicitados" id="dias_solicitados" value="{{ old('dias_solicitados') }}" class="w-full rounded-xl border-slate-300 bg-slate-50 font-bold text-lg" required>
+                        <p id="dias_help" class="hidden text-xs text-slate-500 mt-1">Se calcula automáticamente: 1 fecha seleccionada = 1 día a descontar.</p>
                     </div>
+                </div>
 
+                <div id="rango_fechas_group" class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
                     <div>
                         <label class="block text-sm font-semibold mb-1">Fecha inicio</label>
-                        <input type="date" name="fecha_inicio" value="{{ old('fecha_inicio') }}" class="w-full rounded-xl border-slate-300" required>
+                        <input type="date" name="fecha_inicio" id="fecha_inicio" value="{{ old('fecha_inicio') }}" class="w-full rounded-xl border-slate-300" required>
                     </div>
 
                     <div>
                         <label class="block text-sm font-semibold mb-1">Fecha fin</label>
-                        <input type="date" name="fecha_fin" value="{{ old('fecha_fin') }}" class="w-full rounded-xl border-slate-300" required>
+                        <input type="date" name="fecha_fin" id="fecha_fin" value="{{ old('fecha_fin') }}" class="w-full rounded-xl border-slate-300" required>
+                    </div>
+                </div>
+
+                <div id="vacaciones_fechas_group" class="hidden mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
+                    <div class="flex flex-col md:flex-row md:items-end gap-3">
+                        <div class="flex-1">
+                            <label class="block text-sm font-semibold mb-1">Elige una fecha de vacaciones</label>
+                            <input type="date" id="fecha_vacacion_input" class="w-full rounded-xl border-slate-300">
+                        </div>
+                        <button type="button" id="agregar_fecha_vacacion" class="rounded-xl bg-slate-950 text-white px-5 py-3 font-semibold hover:bg-slate-800">
+                            Añadir fecha
+                        </button>
                     </div>
 
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-semibold mb-1">Motivo / comentarios</label>
-                        <textarea name="motivo" rows="4" class="w-full rounded-xl border-slate-300">{{ old('motivo') }}</textarea>
+                    <div class="mt-3 text-sm text-slate-600">
+                        Selecciona solo los días que realmente tomarás. Puedes elegir fechas separadas; el sistema validará horario laboral, días festivos, días inhábiles y solicitudes duplicadas.
                     </div>
+
+                    <div id="mensaje_fechas" class="hidden mt-3 rounded-xl px-4 py-3 text-sm"></div>
+
+                    <div class="mt-5 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-center rounded-2xl bg-white border border-blue-100 p-4">
+                        <div>
+                            <div class="text-sm font-semibold text-slate-900">Resumen de vacaciones</div>
+                            <div class="text-xs text-slate-500 mt-1">Solo las fechas mostradas abajo se guardarán y descontarán.</div>
+                        </div>
+                        <div class="rounded-2xl bg-blue-600 text-white px-5 py-3 text-center min-w-32">
+                            <div class="text-xs uppercase tracking-wide text-blue-100">Total</div>
+                            <div class="text-2xl font-black"><span id="contador_fechas">0</span> día(s)</div>
+                        </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <div class="text-sm font-semibold mb-2">Fechas elegidas para descontar</div>
+                        <div id="fechas_vacaciones_lista" class="flex flex-wrap gap-2"></div>
+                        <div id="fechas_hidden"></div>
+                    </div>
+                </div>
+
+                <div class="mt-5">
+                    <label class="block text-sm font-semibold mb-1">Motivo / comentarios</label>
+                    <textarea name="motivo" rows="4" class="w-full rounded-xl border-slate-300">{{ old('motivo') }}</textarea>
                 </div>
             </div>
 
@@ -160,7 +205,7 @@
                     Correo RH configurado: <strong>rhformularios@prosalon.mx</strong>.
                 </div>
                 <button class="rounded-xl bg-slate-950 text-white px-8 py-3 hover:bg-slate-800 font-semibold">
-                    Generar y enviar formato
+                    Enviar solicitud y generar formato
                 </button>
             </div>
         </form>
@@ -171,14 +216,60 @@ const input = document.getElementById('empleado_search');
 const results = document.getElementById('empleado_results');
 const area = document.getElementById('area_filter');
 const empleadoId = document.getElementById('empleado_id');
+const form = document.getElementById('formPermiso');
+const tipoPermiso = document.getElementById('tipo_permiso_id');
+const diasSolicitados = document.getElementById('dias_solicitados');
+const diasHelp = document.getElementById('dias_help');
+const rangoGroup = document.getElementById('rango_fechas_group');
+const fechaInicio = document.getElementById('fecha_inicio');
+const fechaFin = document.getElementById('fecha_fin');
+const vacacionesGroup = document.getElementById('vacaciones_fechas_group');
+const fechaVacacionInput = document.getElementById('fecha_vacacion_input');
+const agregarFechaBtn = document.getElementById('agregar_fecha_vacacion');
+const fechasLista = document.getElementById('fechas_vacaciones_lista');
+const fechasHidden = document.getElementById('fechas_hidden');
+const mensajeFechas = document.getElementById('mensaje_fechas');
+const contadorFechas = document.getElementById('contador_fechas');
+const csrfToken = document.querySelector('input[name="_token"]').value;
+const urlValidarFechas = @json(route('permisos.fechas.validar'));
+
 let timer = null;
+let empleadoSeleccionado = null;
+let fechasVacaciones = new Set(@json(old('fechas_seleccionadas', [])));
+let validandoSubmit = false;
+
+function esVacaciones() {
+    const option = tipoPermiso.options[tipoPermiso.selectedIndex];
+    return option?.dataset?.vacaciones === '1';
+}
 
 function hideResults() {
     results.classList.add('hidden');
     results.innerHTML = '';
 }
 
+function mostrarMensajeFechas(texto, tipo = 'info') {
+    mensajeFechas.textContent = texto;
+    mensajeFechas.className = 'mt-3 rounded-xl px-4 py-3 text-sm';
+
+    if (tipo === 'error') {
+        mensajeFechas.classList.add('bg-red-100', 'border', 'border-red-300', 'text-red-800');
+    } else if (tipo === 'success') {
+        mensajeFechas.classList.add('bg-emerald-100', 'border', 'border-emerald-300', 'text-emerald-800');
+    } else {
+        mensajeFechas.classList.add('bg-blue-100', 'border', 'border-blue-300', 'text-blue-800');
+    }
+
+    mensajeFechas.classList.remove('hidden');
+}
+
+function ocultarMensajeFechas() {
+    mensajeFechas.classList.add('hidden');
+}
+
 function renderEmpleado(emp) {
+    const empleadoAnteriorId = empleadoId.value;
+    empleadoSeleccionado = emp;
     empleadoId.value = emp.id;
     input.value = `${emp.nombre} — ${emp.curp || emp.rfc || emp.numero_empleado || 'Sin clave'}`;
     hideResults();
@@ -193,16 +284,24 @@ function renderEmpleado(emp) {
     document.getElementById('card_lider').textContent = emp.lider ?? 'Sin líder asignado';
     document.getElementById('card_correo_lider').textContent = emp.correo_lider ?? 'Sin correo';
     document.getElementById('card_correo').textContent = emp.correo ?? 'Sin correo';
-    document.getElementById('saldo_correspondientes').textContent = Number(emp.saldo?.saldo_excel ?? 0).toFixed(2);
+    document.getElementById('card_horario').textContent = emp.calendario_laboral?.descripcion ?? 'Lunes a viernes';
+    document.getElementById('saldo_correspondientes').textContent = Number(emp.saldo?.saldo_excel ?? emp.saldo?.dias_disponibles ?? 0).toFixed(2);
     document.getElementById('saldo_ajuste').textContent = Number(emp.saldo?.dias_correspondientes ?? 0).toFixed(2);
     document.getElementById('saldo_usados').textContent = Number(emp.saldo?.dias_usados ?? 0).toFixed(2);
     document.getElementById('saldo_pendientes').textContent = Number(emp.saldo?.dias_pendientes_formato ?? 0).toFixed(2);
     document.getElementById('saldo_disponibles').textContent = Number(emp.saldo?.dias_disponibles ?? emp.saldo?.dias_restantes ?? 0).toFixed(2);
+
+    if (empleadoAnteriorId && String(empleadoAnteriorId) !== String(emp.id)) {
+        fechasVacaciones.clear();
+    }
+    renderFechasVacaciones();
+    ocultarMensajeFechas();
 }
 
 async function buscar() {
     const q = input.value.trim();
     empleadoId.value = '';
+    empleadoSeleccionado = null;
 
     if (q.length < 2) {
         hideResults();
@@ -233,7 +332,7 @@ async function buscar() {
                 <div class="font-semibold text-slate-900">${emp.nombre ?? ''}</div>
                 <div class="text-xs text-slate-500">CURP: ${emp.curp ?? 'Sin CURP'} · RFC: ${emp.rfc ?? 'Sin RFC'} · No: ${emp.numero_empleado ?? 'Sin número'}</div>
                 <div class="text-xs text-slate-500">${emp.area ?? 'Sin área'} · ${emp.puesto ?? 'Sin puesto'} · Ingreso: ${emp.fecha_ingreso_formato ?? 'Sin fecha'}</div>
-                <div class="text-xs text-slate-500">Líder: ${emp.lider ?? 'Sin líder'} · Restantes: ${emp.saldo?.dias_disponibles ?? 0} días</div>
+                <div class="text-xs text-slate-500">Líder: ${emp.lider ?? 'Sin líder'} · Disponible: ${emp.saldo?.dias_disponibles ?? 0} días · Horario: ${emp.calendario_laboral?.descripcion ?? 'L-V'}</div>
             `;
             item.addEventListener('click', () => renderEmpleado(emp));
             results.appendChild(item);
@@ -242,6 +341,141 @@ async function buscar() {
         results.innerHTML = '<div class="p-4 text-red-600">Error al buscar empleados.</div>';
     }
 }
+
+function actualizarModoFechas() {
+    if (esVacaciones()) {
+        rangoGroup.classList.add('hidden');
+        fechaInicio.required = false;
+        fechaFin.required = false;
+        fechaInicio.disabled = true;
+        fechaFin.disabled = true;
+        vacacionesGroup.classList.remove('hidden');
+        diasSolicitados.readOnly = true;
+        diasSolicitados.step = '1';
+        diasSolicitados.min = '1';
+        diasHelp.classList.remove('hidden');
+        renderFechasVacaciones();
+    } else {
+        rangoGroup.classList.remove('hidden');
+        fechaInicio.required = true;
+        fechaFin.required = true;
+        fechaInicio.disabled = false;
+        fechaFin.disabled = false;
+        vacacionesGroup.classList.add('hidden');
+        diasSolicitados.readOnly = false;
+        diasSolicitados.step = '0.5';
+        diasSolicitados.min = '0.5';
+        diasHelp.classList.add('hidden');
+    }
+}
+
+function renderFechasVacaciones() {
+    const fechas = Array.from(fechasVacaciones).sort();
+    fechasLista.innerHTML = '';
+    fechasHidden.innerHTML = '';
+
+    fechas.forEach(fecha => {
+        const wrapper = document.createElement('span');
+        wrapper.className = 'inline-flex items-center gap-2 rounded-full bg-slate-950 text-white px-3 py-2 text-sm';
+
+        const texto = document.createElement('span');
+        texto.textContent = new Date(fecha + 'T12:00:00').toLocaleDateString('es-MX');
+
+        const quitar = document.createElement('button');
+        quitar.type = 'button';
+        quitar.className = 'font-bold text-slate-300 hover:text-white';
+        quitar.textContent = '×';
+        quitar.addEventListener('click', () => {
+            fechasVacaciones.delete(fecha);
+            renderFechasVacaciones();
+        });
+
+        wrapper.append(texto, quitar);
+        fechasLista.appendChild(wrapper);
+
+        const hidden = document.createElement('input');
+        hidden.type = 'hidden';
+        hidden.name = 'fechas_seleccionadas[]';
+        hidden.value = fecha;
+        fechasHidden.appendChild(hidden);
+    });
+
+    if (!fechas.length) {
+        fechasLista.innerHTML = '<span class="text-sm text-slate-400">Aún no has seleccionado días.</span>';
+    }
+
+    if (esVacaciones()) {
+        diasSolicitados.value = fechas.length || '';
+    }
+}
+
+async function validarFechasRemoto(fechas) {
+    if (!empleadoId.value) {
+        throw new Error('Selecciona primero un colaborador.');
+    }
+
+    const response = await fetch(urlValidarFechas, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': csrfToken,
+        },
+        body: JSON.stringify({
+            empleado_id: empleadoId.value,
+            fechas,
+        }),
+    });
+
+    if (!response.ok) {
+        const payload = await response.json().catch(() => ({}));
+        throw new Error(payload.message || 'No se pudieron validar las fechas.');
+    }
+
+    return response.json();
+}
+
+agregarFechaBtn.addEventListener('click', async function () {
+    ocultarMensajeFechas();
+
+    if (!empleadoId.value) {
+        mostrarMensajeFechas('Selecciona primero un colaborador.', 'error');
+        return;
+    }
+
+    const fecha = fechaVacacionInput.value;
+    if (!fecha) {
+        mostrarMensajeFechas('Selecciona una fecha antes de agregarla.', 'error');
+        return;
+    }
+
+    if (fechasVacaciones.has(fecha)) {
+        mostrarMensajeFechas('Esa fecha ya está seleccionada.', 'error');
+        return;
+    }
+
+    try {
+        agregarFechaBtn.disabled = true;
+        agregarFechaBtn.textContent = 'Validando...';
+
+        const resultado = await validarFechasRemoto([fecha]);
+
+        if (resultado.invalidas?.length) {
+            mostrarMensajeFechas(resultado.invalidas[0].fecha_formato + ': ' + resultado.invalidas[0].motivo, 'error');
+            return;
+        }
+
+        fechasVacaciones.add(fecha);
+        fechaVacacionInput.value = '';
+        renderFechasVacaciones();
+        mostrarMensajeFechas('Día agregado correctamente.', 'success');
+    } catch (e) {
+        mostrarMensajeFechas(e.message || 'No se pudo validar la fecha.', 'error');
+    } finally {
+        agregarFechaBtn.disabled = false;
+        agregarFechaBtn.textContent = 'Añadir fecha';
+    }
+});
 
 input.addEventListener('input', function () {
     clearTimeout(timer);
@@ -252,18 +486,59 @@ area.addEventListener('change', function () {
     if (input.value.trim().length >= 2) buscar();
 });
 
+tipoPermiso.addEventListener('change', actualizarModoFechas);
+
 document.addEventListener('click', function (e) {
     if (!results.contains(e.target) && e.target !== input) {
         hideResults();
     }
 });
 
-document.getElementById('formPermiso').addEventListener('submit', function (e) {
+form.addEventListener('submit', async function (e) {
+    if (validandoSubmit) {
+        return;
+    }
+
     if (!empleadoId.value) {
         e.preventDefault();
         alert('Selecciona un colaborador desde la lista de resultados antes de enviar.');
+        return;
+    }
+
+    if (!esVacaciones()) {
+        return;
+    }
+
+    e.preventDefault();
+
+    const fechas = Array.from(fechasVacaciones).sort();
+    if (!fechas.length) {
+        mostrarMensajeFechas('Selecciona al menos un día de vacaciones.', 'error');
+        return;
+    }
+
+    if (Number(diasSolicitados.value) !== fechas.length) {
+        mostrarMensajeFechas(`Los días solicitados (${diasSolicitados.value || 0}) no coinciden con las ${fechas.length} fechas seleccionadas.`, 'error');
+        return;
+    }
+
+    try {
+        const resultado = await validarFechasRemoto(fechas);
+        if (resultado.invalidas?.length) {
+            const detalle = resultado.invalidas.map(item => `${item.fecha_formato}: ${item.motivo}`).join(' | ');
+            mostrarMensajeFechas(detalle, 'error');
+            return;
+        }
+
+        validandoSubmit = true;
+        form.submit();
+    } catch (e) {
+        mostrarMensajeFechas(e.message || 'No se pudieron validar las fechas.', 'error');
     }
 });
+
+actualizarModoFechas();
+renderFechasVacaciones();
 </script>
 </body>
 </html>

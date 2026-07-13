@@ -277,28 +277,19 @@
                                         </div>
                                     </div>
 
-                                    @if(!empty($solicitud->fechas_seleccionadas))
-                                        <div class="md:col-span-2">
-                                            <div class="text-xs text-slate-500">Días seleccionados</div>
-                                            <div class="font-semibold text-slate-800">
-                                                {{ collect($solicitud->fechas_seleccionadas)->map(fn ($fecha) => \Carbon\Carbon::parse($fecha)->format('d/m/Y'))->implode(', ') }}
-                                            </div>
+                                    <div>
+                                        <div class="text-xs text-slate-500">Fecha inicio</div>
+                                        <div class="font-semibold text-slate-800">
+                                            {{ \Carbon\Carbon::parse($solicitud->fecha_inicio)->format('d/m/Y') }}
                                         </div>
-                                    @else
-                                        <div>
-                                            <div class="text-xs text-slate-500">Fecha inicio</div>
-                                            <div class="font-semibold text-slate-800">
-                                                {{ \Carbon\Carbon::parse($solicitud->fecha_inicio)->format('d/m/Y') }}
-                                            </div>
-                                        </div>
+                                    </div>
 
-                                        <div>
-                                            <div class="text-xs text-slate-500">Fecha fin</div>
-                                            <div class="font-semibold text-slate-800">
-                                                {{ \Carbon\Carbon::parse($solicitud->fecha_fin)->format('d/m/Y') }}
-                                            </div>
+                                    <div>
+                                        <div class="text-xs text-slate-500">Fecha fin</div>
+                                        <div class="font-semibold text-slate-800">
+                                            {{ \Carbon\Carbon::parse($solicitud->fecha_fin)->format('d/m/Y') }}
                                         </div>
-                                    @endif
+                                    </div>
                                 </div>
                             </div>
                         @endforeach

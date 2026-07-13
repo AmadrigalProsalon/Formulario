@@ -94,13 +94,7 @@
                             <td class="p-4">{{ $s->area?->nombre ?? $s->empleado?->area?->nombre }}</td>
                             <td class="p-4">{{ $s->tipoPermiso?->nombre }}</td>
                             <td class="p-4">
-                                @if($s->diasSeleccionados->isNotEmpty())
-                                    <div class="font-medium">
-                                        {{ $s->diasSeleccionados->map(fn ($dia) => $dia->fecha->format('d/m/Y'))->implode(', ') }}
-                                    </div>
-                                @else
-                                    {{ $s->fecha_inicio?->format('d/m/Y') }} al {{ $s->fecha_fin?->format('d/m/Y') }}
-                                @endif
+                                {{ $s->fecha_inicio?->format('d/m/Y') }} al {{ $s->fecha_fin?->format('d/m/Y') }}
                                 <div class="text-xs text-slate-500">{{ $s->dias_solicitados }} días</div>
                             </td>
                             <td class="p-4">

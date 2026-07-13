@@ -17,3 +17,6 @@ Route::middleware(['auth'])->group(function () {
         return redirect()->route('admin.ausencias.calendario');
     });
 });
+
+Route::get('/calendario-ausencias-prueba', [AusenciasCalendarioController::class, 'preview'])
+    ->name('calendario.ausencias.prueba');

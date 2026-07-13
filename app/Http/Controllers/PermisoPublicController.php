@@ -95,6 +95,10 @@ class PermisoPublicController extends Controller
                 'user_agent' => $request->userAgent(),
             ]);
 
+            if ($tipo->descuenta_vacaciones) {
+                $empleado->increment('vacaciones_pendientes', $dias);
+            }
+
             if ($tipo->requiere_firma_colaborador) {
                 $this->crearFirma($solicitud, $empleado, 'colaborador');
             }

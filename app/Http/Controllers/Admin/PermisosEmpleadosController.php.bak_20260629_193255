@@ -299,8 +299,6 @@ class PermisosEmpleadosController extends Controller
             'vacaciones_ajuste' => ['nullable', 'numeric'],
             'es_lider' => ['nullable', 'boolean'],
             'activo' => ['nullable', 'boolean'],
-            'dias_laborales' => ['nullable', 'array'],
-            'dias_laborales.*' => ['integer', 'between:1,7'],
         ]);
 
         $validated['curp'] = $this->normalizarClave($validated['curp'] ?? null);
@@ -308,9 +306,6 @@ class PermisosEmpleadosController extends Controller
         $validated['vacaciones_ajuste'] = $validated['vacaciones_ajuste'] ?? 0;
         $validated['es_lider'] = $request->boolean('es_lider');
         $validated['activo'] = $request->boolean('activo');
-        $validated['dias_laborales'] = $request->filled('dias_laborales')
-            ? array_values(array_unique(array_map('intval', $request->input('dias_laborales', []))))
-            : null;
 
         $empleado->update($validated);
 
@@ -770,4 +765,93 @@ class PermisosEmpleadosController extends Controller
 
         return $valor !== '' ? $valor : null;
     }
+    private function obtenerOCrearLiderDesdeCsv(?string $nombreLider, ?int $areaId = null): ?int
+{
+    $nombreLider = trim((string) $nombreLider);
+
+    if ($nombreLider === '') {
+        return null;
+    }
+
+    $normalizar = function ($texto) {
+        $texto = trim((string) $texto);
+        $texto = mb_strtoupper($texto, 'UTF-8');
+        $texto = str_replace(
+            ['Á', 'É', 'Í', 'Ó', 'Ú', 'Ü', 'Ñ'],
+            ['A', 'E', 'I', 'O', 'U', 'U', 'N'],
+            $texto
+        );
+        $texto = preg_replace('/\s+/', ' ', $texto);
+
+        return $texto;
+    };
+
+    $nombreNormalizado = $normalizar($nombreLider);
+
+    /*
+    |--------------------------------------------------------------------------
+    | 1. Buscar si el líder ya existe como empleado
+    |--------------------------------------------------------------------------
+    */
+    $empleados = \Illuminate\Support\Facades\DB::table('empleados')
+        ->select('id', 'nombre', 'numero_empleado')
+        ->get();
+
+    foreach ($empleados as $empleado) {
+        if ($normalizar($empleado->nombre ?? '') === $nombreNormalizado) {
+            $update = [
+                'es_lider' => 1,
+                'activo' => 1,
+            ];
+
+            if (\Illuminate\Support\Facades\Schema::hasColumn('empleados', 'updated_at')) {
+                $update['updated_at'] = now();
+            }
+
+            \Illuminate\Support\Facades\DB::table('empleados')
+                ->where('id', $empleado->id)
+                ->update($update);
+
+            return (int) $empleado->id;
+        }
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | 2. Si no existe, crear líder provisional
+    |--------------------------------------------------------------------------
+    | Como en el CSV los jefes directos no traen CLAVE propia, generamos una.
+    */
+    $numeroEmpleadoLider = 'LIDER-' . strtoupper(substr(md5($nombreNormalizado), 0, 10));
+
+    $data = [
+        'numero_empleado' => $numeroEmpleadoLider,
+        'nombre' => $nombreLider,
+        'area_id' => $areaId,
+        'es_lider' => 1,
+        'activo' => 1,
+    ];
+
+    if (\Illuminate\Support\Facades\Schema::hasColumn('empleados', 'vacaciones_ajuste')) {
+        $data['vacaciones_ajuste'] = 0;
+    }
+
+    if (\Illuminate\Support\Facades\Schema::hasColumn('empleados', 'vacaciones_usados')) {
+        $data['vacaciones_usados'] = 0;
+    }
+
+    if (\Illuminate\Support\Facades\Schema::hasColumn('empleados', 'vacaciones_pendientes')) {
+        $data['vacaciones_pendientes'] = 0;
+    }
+
+    if (\Illuminate\Support\Facades\Schema::hasColumn('empleados', 'created_at')) {
+        $data['created_at'] = now();
+    }
+
+    if (\Illuminate\Support\Facades\Schema::hasColumn('empleados', 'updated_at')) {
+        $data['updated_at'] = now();
+    }
+
+    return \Illuminate\Support\Facades\DB::table('empleados')->insertGetId($data);
+}
 }

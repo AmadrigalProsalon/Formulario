@@ -24,17 +24,8 @@
                 <div><span class="text-slate-500">Líder</span><div class="font-semibold">{{ $permiso->lider?->nombre ?? $permiso->empleado?->lider?->nombre }}</div></div>
                 <div><span class="text-slate-500">Tipo</span><div class="font-semibold">{{ $permiso->tipoPermiso?->nombre }}</div></div>
                 <div><span class="text-slate-500">Días</span><div class="font-semibold">{{ $permiso->dias_solicitados }}</div></div>
-                @if($permiso->diasSeleccionados->isNotEmpty())
-                    <div class="md:col-span-2">
-                        <span class="text-slate-500">Días seleccionados</span>
-                        <div class="font-semibold">
-                            {{ $permiso->diasSeleccionados->map(fn ($dia) => $dia->fecha->format('d/m/Y'))->implode(', ') }}
-                        </div>
-                    </div>
-                @else
-                    <div><span class="text-slate-500">Fecha inicio</span><div class="font-semibold">{{ $permiso->fecha_inicio?->format('d/m/Y') }}</div></div>
-                    <div><span class="text-slate-500">Fecha fin</span><div class="font-semibold">{{ $permiso->fecha_fin?->format('d/m/Y') }}</div></div>
-                @endif
+                <div><span class="text-slate-500">Fecha inicio</span><div class="font-semibold">{{ $permiso->fecha_inicio?->format('d/m/Y') }}</div></div>
+                <div><span class="text-slate-500">Fecha fin</span><div class="font-semibold">{{ $permiso->fecha_fin?->format('d/m/Y') }}</div></div>
                 <div><span class="text-slate-500">Estatus</span><div class="font-semibold">{{ str_replace('_', ' ', $permiso->estatus) }}</div></div>
                 <div><span class="text-slate-500">Documento enviado</span><div class="font-semibold">{{ $permiso->documento_enviado_at?->format('d/m/Y H:i') ?? 'No enviado' }}</div></div>
                 <div class="md:col-span-2"><span class="text-slate-500">Motivo</span><div class="font-semibold">{{ $permiso->motivo ?: 'Sin motivo' }}</div></div>

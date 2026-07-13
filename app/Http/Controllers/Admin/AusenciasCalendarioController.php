@@ -16,6 +16,14 @@ class AusenciasCalendarioController extends Controller
         return view('admin.ausencias.calendario', $this->buildCalendarData($request));
     }
 
+    public function preview(Request $request)
+    {
+        $data = $this->buildCalendarData($request);
+        $data['modoPrueba'] = true;
+
+        return view('admin.ausencias.calendario', $data);
+    }
+
     private function buildCalendarData(Request $request): array
     {
         $anio = (int) $request->input('anio', now()->year);
@@ -50,12 +58,7 @@ class AusenciasCalendarioController extends Controller
             : collect();
 
         $solicitudes = $this->getSolicitudes($request, $inicioCalendario, $finCalendario);
-
-        $solicitudesPorDia = $this->agruparSolicitudesPorDia(
-            $solicitudes,
-            $inicioCalendario,
-            $finCalendario
-        );
+        $solicitudesPorDia = $this->agruparSolicitudesPorDia($solicitudes, $inicioCalendario, $finCalendario);
 
         $nombresMeses = [
             1 => 'Enero',
@@ -115,18 +118,10 @@ class AusenciasCalendarioController extends Controller
 
         $select = [
             's.id',
-            's.empleado_id',
             's.fecha_inicio',
             's.fecha_fin',
-            's.dias_solicitados',
             's.estatus',
         ];
-
-        if (Schema::hasColumn('permisos_solicitudes', 'motivo')) {
-            $select[] = 's.motivo';
-        } else {
-            $select[] = DB::raw('NULL as motivo');
-        }
 
         if (Schema::hasColumn('permisos_solicitudes', 'empleado_id') && Schema::hasTable('empleados')) {
             $query->leftJoin('empleados as e', 'e.id', '=', 's.empleado_id');
@@ -178,63 +173,17 @@ class AusenciasCalendarioController extends Controller
             $query->where('s.estatus', $request->input('estatus'));
         }
 
-        return $query
-            ->orderBy('s.fecha_inicio')
-            ->orderBy('empleado_nombre')
-            ->get();
+        return $query->orderBy('s.fecha_inicio')->get();
     }
 
-    private function agruparSolicitudesPorDia(
-        $solicitudes,
-        Carbon $inicioCalendario,
-        Carbon $finCalendario
-    ) {
+    private function agruparSolicitudesPorDia($solicitudes, Carbon $inicioCalendario, Carbon $finCalendario)
+    {
         $solicitudesPorDia = collect();
 
-        if ($solicitudes->isEmpty()) {
-            return $solicitudesPorDia;
-        }
-
-        $diasEspecificos = collect();
-
-        if (Schema::hasTable('permiso_solicitud_dias')) {
-            $diasEspecificos = DB::table('permiso_solicitud_dias')
-                ->whereIn('permiso_solicitud_id', $solicitudes->pluck('id'))
-                ->orderBy('fecha')
-                ->get()
-                ->groupBy('permiso_solicitud_id');
-        }
-
         foreach ($solicitudes as $solicitud) {
-            $diasSolicitud = $diasEspecificos->get($solicitud->id, collect());
-
-            if ($diasSolicitud->isNotEmpty()) {
-                $solicitud->fechas_seleccionadas = $diasSolicitud
-                    ->pluck('fecha')
-                    ->map(fn ($fecha) => Carbon::parse($fecha)->format('Y-m-d'))
-                    ->values()
-                    ->all();
-
-                foreach ($diasSolicitud as $diaSolicitud) {
-                    $fechaDia = Carbon::parse($diaSolicitud->fecha)->startOfDay();
-
-                    if (! $fechaDia->betweenIncluded($inicioCalendario, $finCalendario)) {
-                        continue;
-                    }
-
-                    $key = $fechaDia->format('Y-m-d');
-
-                    if (! $solicitudesPorDia->has($key)) {
-                        $solicitudesPorDia[$key] = collect();
-                    }
-
-                    $solicitudesPorDia[$key]->push($solicitud);
-                }
-
+            if (empty($solicitud->fecha_inicio) || empty($solicitud->fecha_fin)) {
                 continue;
             }
-
-            $solicitud->fechas_seleccionadas = [];
 
             $desde = Carbon::parse($solicitud->fecha_inicio)->startOfDay();
             $hasta = Carbon::parse($solicitud->fecha_fin)->startOfDay();

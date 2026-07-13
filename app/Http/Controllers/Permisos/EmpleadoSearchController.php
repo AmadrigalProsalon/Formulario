@@ -58,7 +58,6 @@ class EmpleadoSearchController extends Controller
                     'calendario_laboral' => [
                         'dias' => $calendarioService->diasLaboralesEmpleado($empleado),
                         'descripcion' => $calendarioService->descripcionHorario($empleado),
-                        'origen' => $calendarioService->origenHorario($empleado),
                     ],
                 ];
             });
