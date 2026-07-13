@@ -3,214 +3,200 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Solicitud de vacaciones y permisos</title>
+    <title>Solicitud de vacaciones</title>
     @vite(['resources/js/app.js'])
 </head>
-<body class="bg-gradient-to-br from-slate-100 via-white to-blue-50 text-slate-800">
-    <div class="max-w-5xl mx-auto py-10 px-4">
-        <div class="rounded-[2rem] bg-gradient-to-br from-slate-950 via-slate-900 to-blue-950 text-white p-8 md:p-10 mb-7 shadow-xl shadow-slate-900/10 overflow-hidden relative">
-            <div class="absolute -right-16 -top-16 w-56 h-56 rounded-full bg-blue-500/20 blur-2xl"></div>
-            <div class="absolute right-24 -bottom-24 w-48 h-48 rounded-full bg-cyan-400/10 blur-2xl"></div>
-            <div class="relative flex flex-col md:flex-row md:items-end md:justify-between gap-4">
-                <div>
-                    <p class="text-slate-300 text-sm uppercase tracking-wide">Recursos Humanos</p>
-                    <h1 class="text-3xl font-bold mt-2">Solicitud de vacaciones y permisos</h1>
-                    <p class="text-slate-300 mt-2 max-w-2xl">
-                        Busca al colaborador por CURP, RFC, nombre, correo o número de empleado. El sistema cargará sus datos, líder, saldo de vacaciones y calendario laboral.
-                    </p>
+<body class="min-h-screen bg-slate-100 text-slate-800">
+<div class="mx-auto max-w-6xl px-3 py-5 sm:px-6 md:py-9">
+    <div class="overflow-hidden rounded-[2rem] border border-slate-200 bg-white shadow-xl shadow-slate-900/5">
+        <header class="relative overflow-hidden border-b border-indigo-100 bg-gradient-to-br from-white via-indigo-50 to-cyan-50 px-6 py-8 md:px-10 md:py-11">
+            <div class="absolute -right-20 -top-16 h-72 w-72 rounded-full bg-indigo-200/35 blur-3xl"></div>
+            <div class="absolute bottom-0 right-24 hidden h-28 w-44 rounded-t-full bg-amber-300/70 md:block"></div>
+            <div class="absolute bottom-0 right-32 hidden h-28 w-2 -rotate-3 bg-amber-800/70 md:block"></div>
+            <div class="absolute -bottom-10 right-6 hidden h-32 w-64 rounded-[50%] bg-cyan-300/40 md:block"></div>
+            <div class="relative max-w-3xl">
+                <div class="mb-4 inline-flex items-center gap-2 rounded-full border border-indigo-200 bg-white/80 px-3 py-1.5 text-xs font-bold uppercase tracking-[.18em] text-indigo-700 shadow-sm">
+                    Recursos Humanos
                 </div>
-
-                @if(auth()->check() && auth()->user()->is_admin)
-                    <a href="{{ route('admin.permisos.index') }}" class="rounded-xl bg-white text-slate-950 px-5 py-3 font-semibold hover:bg-slate-100">
-                        Panel RH
-                    </a>
-                @endif
-            </div>
-        </div>
-
-        @if(session('error'))
-            <div class="mb-5 rounded-2xl bg-red-100 border border-red-300 text-red-800 px-5 py-4">
-                {{ session('error') }}
-            </div>
-        @endif
-
-        @if($errors->any())
-            <div class="mb-5 rounded-2xl bg-red-100 border border-red-300 text-red-800 px-5 py-4">
-                <div class="font-semibold mb-2">Revisa estos campos:</div>
-                <ul class="list-disc pl-5">
-                    @foreach($errors->all() as $error)
-                        <li>{{ $error }}</li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        <form method="POST" action="{{ route('permisos.solicitud.store') }}" class="space-y-6" id="formPermiso">
-            @csrf
-            <input type="hidden" name="empleado_id" id="empleado_id" value="{{ old('empleado_id') }}">
-
-            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
-                <div class="flex items-center gap-3 mb-5">
-                    <span class="w-9 h-9 rounded-full bg-slate-950 text-white flex items-center justify-center font-bold">1</span>
+                <div class="flex items-start gap-4">
+                    <div class="hidden h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-3xl text-white shadow-lg sm:flex">☀</div>
                     <div>
-                        <h2 class="text-xl font-bold">Buscar colaborador</h2>
-                        <p class="text-sm text-slate-500">Busca por CURP, RFC, nombre, correo o número de empleado. También puedes filtrar por departamento.</p>
+                        <div class="text-xl font-medium text-indigo-950">Solicitud de</div>
+                        <h1 class="text-4xl font-black tracking-tight text-indigo-950 sm:text-5xl">VACACIONES</h1>
+                        <p class="mt-3 max-w-2xl text-sm text-slate-600 sm:text-base">
+                            Selecciona al colaborador y agrega exactamente los días que desea disfrutar. Puedes elegir fechas consecutivas o salteadas.
+                        </p>
                     </div>
                 </div>
+            </div>
+        </header>
 
-                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">Filtrar por departamento</label>
-                        <select id="area_filter" class="w-full rounded-xl border-slate-300">
-                            <option value="">Todos</option>
-                            @foreach($areas as $area)
-                                <option value="{{ $area->id }}">{{ $area->nombre }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div class="md:col-span-2 relative">
-                        <label class="block text-sm font-semibold mb-1">CURP, RFC o nombre del colaborador</label>
-                        <input type="text" id="empleado_search" autocomplete="off" placeholder="Ej. CURP, RFC, Juan Pérez, correo o número empleado" class="w-full rounded-xl border-slate-300 uppercase md:normal-case">
-                        <div id="empleado_results" class="hidden absolute z-30 bg-white border border-slate-200 rounded-2xl shadow-lg mt-2 w-full max-h-80 overflow-y-auto"></div>
-                    </div>
+        <div class="p-4 sm:p-7 md:p-10">
+            @if(session('error'))
+                <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-red-800">{{ session('error') }}</div>
+            @endif
+            @if($errors->any())
+                <div class="mb-6 rounded-2xl border border-red-200 bg-red-50 px-5 py-4 text-red-800">
+                    <div class="mb-2 font-bold">Revisa la información:</div>
+                    <ul class="list-disc pl-5 text-sm">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
                 </div>
+            @endif
 
-                <div id="empleado_card" class="hidden mt-5 rounded-2xl bg-blue-50 border border-blue-200 p-5 text-blue-950">
-                    <div class="flex items-start justify-between gap-4 mb-4">
-                        <div>
-                            <h3 class="font-bold text-lg" id="card_nombre_titulo"></h3>
-                            <p class="text-sm text-blue-800" id="card_identificadores"></p>
+            <form method="POST" action="{{ route('permisos.solicitud.store') }}" id="formPermiso" class="space-y-6">
+                @csrf
+                <input type="hidden" name="empleado_id" id="empleado_id" value="{{ old('empleado_id') }}">
+
+                <section id="resumen_vacaciones" class="grid grid-cols-1 overflow-hidden rounded-3xl border border-indigo-100 bg-white opacity-50 shadow-sm transition lg:grid-cols-5">
+                    <div class="lg:col-span-3 p-6 md:p-7">
+                        <div class="mb-5 flex items-center gap-3">
+                            <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-100 text-xl text-violet-700">◴</div>
+                            <div>
+                                <h2 class="font-black text-indigo-950">Resumen de días disponibles</h2>
+                                <p class="text-xs text-slate-500">El saldo oficial proviene del archivo de RH.</p>
+                            </div>
                         </div>
-                        <span class="rounded-full bg-blue-100 text-blue-800 px-3 py-1 text-xs font-semibold">Colaborador seleccionado</span>
-                    </div>
-
-                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                        <div><span class="font-semibold">Nombre:</span><br><span id="card_nombre"></span></div>
-                        <div><span class="font-semibold">Área:</span><br><span id="card_area"></span></div>
-                        <div><span class="font-semibold">Puesto:</span><br><span id="card_puesto"></span></div>
-                        <div><span class="font-semibold">Fecha ingreso:</span><br><span id="card_fecha_ingreso"></span></div>
-                    </div>
-
-                    <div class="mt-4 grid grid-cols-1 md:grid-cols-4 gap-4 text-sm">
-                        <div><span class="font-semibold">Jefe / líder:</span><br><span id="card_lider"></span></div>
-                        <div><span class="font-semibold">Correo líder:</span><br><span id="card_correo_lider"></span></div>
-                        <div><span class="font-semibold">Correo colaborador:</span><br><span id="card_correo"></span></div>
-                        <div><span class="font-semibold">Horario laboral:</span><br><span id="card_horario"></span></div>
-                    </div>
-
-                    <div class="mt-4 grid grid-cols-1 md:grid-cols-5 gap-4 text-sm">
-                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Saldo oficial Excel</span><br><strong id="saldo_correspondientes">0</strong></div>
-                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Días por ley</span><br><strong id="saldo_ajuste">0</strong></div>
-                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Usadas / recibidas RH</span><br><strong id="saldo_usados">0</strong></div>
-                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Pendientes formato</span><br><strong id="saldo_pendientes">0</strong></div>
-                        <div class="rounded-xl bg-white p-3"><span class="text-slate-500">Disponible</span><br><strong id="saldo_disponibles">0</strong></div>
-                    </div>
-
-                    <p class="mt-3 text-xs text-blue-800">
-                        Nota: las vacaciones se descuentan únicamente cuando RH marca el formato como recibido.
-                    </p>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6">
-                <div class="flex items-center gap-3 mb-5">
-                    <span class="w-9 h-9 rounded-full bg-slate-950 text-white flex items-center justify-center font-bold">2</span>
-                    <div>
-                        <h2 class="text-xl font-bold">Selecciona el permiso y las fechas</h2>
-                        <p class="text-sm text-slate-500">En vacaciones puedes elegir días consecutivos o salteados. Cada fecha válida cuenta como un día y será exactamente lo que se descontará cuando RH reciba el formato.</p>
-                    </div>
-                </div>
-
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">Tipo de permiso</label>
-                        <select name="tipo_permiso_id" id="tipo_permiso_id" class="w-full rounded-xl border-slate-300" required>
-                            <option value="">Selecciona una opción</option>
-                            @foreach($tiposPermisos as $tipo)
-                                <option
-                                    value="{{ $tipo->id }}"
-                                    data-vacaciones="{{ ($tipo->slug === 'vacaciones' || $tipo->descuenta_vacaciones) ? '1' : '0' }}"
-                                    @selected(old('tipo_permiso_id') == $tipo->id)
-                                >
-                                    {{ $tipo->nombre }}
-                                </option>
-                            @endforeach
-                        </select>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">Días solicitados</label>
-                        <input type="number" step="0.5" min="0.5" name="dias_solicitados" id="dias_solicitados" value="{{ old('dias_solicitados') }}" class="w-full rounded-xl border-slate-300 bg-slate-50 font-bold text-lg" required>
-                        <p id="dias_help" class="hidden text-xs text-slate-500 mt-1">Se calcula automáticamente: 1 fecha seleccionada = 1 día a descontar.</p>
-                    </div>
-                </div>
-
-                <div id="rango_fechas_group" class="grid grid-cols-1 md:grid-cols-2 gap-5 mt-5">
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">Fecha inicio</label>
-                        <input type="date" name="fecha_inicio" id="fecha_inicio" value="{{ old('fecha_inicio') }}" class="w-full rounded-xl border-slate-300" required>
-                    </div>
-
-                    <div>
-                        <label class="block text-sm font-semibold mb-1">Fecha fin</label>
-                        <input type="date" name="fecha_fin" id="fecha_fin" value="{{ old('fecha_fin') }}" class="w-full rounded-xl border-slate-300" required>
-                    </div>
-                </div>
-
-                <div id="vacaciones_fechas_group" class="hidden mt-5 rounded-2xl border border-slate-200 bg-slate-50 p-5">
-                    <div class="flex flex-col md:flex-row md:items-end gap-3">
-                        <div class="flex-1">
-                            <label class="block text-sm font-semibold mb-1">Elige una fecha de vacaciones</label>
-                            <input type="date" id="fecha_vacacion_input" class="w-full rounded-xl border-slate-300">
+                        <div class="grid grid-cols-1 gap-5 sm:grid-cols-[150px_1fr] sm:items-center">
+                            <div class="mx-auto flex h-36 w-36 flex-col items-center justify-center rounded-full border-[12px] border-emerald-100 shadow-inner">
+                                <strong id="saldo_disponibles" class="text-3xl font-black text-indigo-950">0.00</strong>
+                                <span class="text-xs text-slate-500">días disponibles</span>
+                            </div>
+                            <div class="divide-y divide-slate-100 text-sm">
+                                <div class="flex justify-between gap-4 py-3"><span class="text-slate-500">Saldo oficial Excel</span><strong id="saldo_correspondientes">0.00 días</strong></div>
+                                <div class="flex justify-between gap-4 py-3"><span class="text-slate-500">Días usados / recibidos</span><strong id="saldo_usados">0.00 días</strong></div>
+                                <div class="flex justify-between gap-4 py-3"><span class="text-slate-500">Pendientes de formato</span><strong id="saldo_pendientes">0.00 días</strong></div>
+                                <div class="flex justify-between gap-4 py-3"><span class="font-bold text-indigo-950">Fechas de esta solicitud</span><strong class="text-emerald-700"><span id="resumen_dias_solicitados">0</span> día(s)</strong></div>
+                                <span id="saldo_ajuste" class="hidden">0</span>
+                            </div>
                         </div>
-                        <button type="button" id="agregar_fecha_vacacion" class="rounded-xl bg-slate-950 text-white px-5 py-3 font-semibold hover:bg-slate-800">
-                            Añadir fecha
+                    </div>
+                    <div class="border-t border-indigo-100 bg-gradient-to-br from-violet-50 to-indigo-50 p-6 md:p-7 lg:border-l lg:border-t-0 lg:col-span-2">
+                        <div class="mb-5 flex items-center gap-3">
+                            <div class="flex h-11 w-11 items-center justify-center rounded-full bg-white text-xl text-violet-700 shadow-sm">i</div>
+                            <h2 class="font-black text-violet-800">Importante</h2>
+                        </div>
+                        <div class="space-y-4 text-sm text-indigo-950">
+                            <div class="flex gap-3"><span>📅</span><p>Selecciona únicamente los días que realmente se tomarán.</p></div>
+                            <div class="flex gap-3"><span>✓</span><p>Cada fecha válida equivale a un día a descontar.</p></div>
+                            <div class="flex gap-3"><span>⚠</span><p>Se validan horarios, días inhábiles, festivos y fechas repetidas.</p></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="rounded-3xl border border-slate-200 bg-white shadow-sm">
+                    <div class="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-violet-50 to-white px-5 py-4 md:px-7">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-violet-600 font-black text-white shadow-md">1</div>
+                        <div><h2 class="font-black text-indigo-950">Datos del colaborador</h2><p class="text-xs text-slate-500">Busca y selecciona al colaborador correcto.</p></div>
+                    </div>
+                    <div class="p-5 md:p-7">
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-3">
+                            <div>
+                                <label class="mb-1 block text-sm font-bold">Departamento</label>
+                                <select id="area_filter" class="w-full rounded-xl border-slate-300 focus:border-violet-500 focus:ring-violet-500">
+                                    <option value="">Todos los departamentos</option>
+                                    @foreach($areas as $area)<option value="{{ $area->id }}">{{ $area->nombre }}</option>@endforeach
+                                </select>
+                            </div>
+                            <div class="relative md:col-span-2">
+                                <label class="mb-1 block text-sm font-bold">CURP, RFC, nombre, correo o número</label>
+                                <input type="text" id="empleado_search" autocomplete="off"
+                                       class="w-full rounded-xl border-slate-300 focus:border-violet-500 focus:ring-violet-500"
+                                       placeholder="Escribe al menos 2 caracteres">
+                                <div id="empleado_results" class="absolute z-30 mt-2 hidden max-h-80 w-full overflow-y-auto rounded-2xl border border-slate-200 bg-white shadow-xl"></div>
+                            </div>
+                        </div>
+
+                        <div id="empleado_card" class="mt-5 hidden rounded-3xl border border-indigo-100 bg-indigo-50/50 p-5">
+                            <div class="mb-4 flex flex-col justify-between gap-3 sm:flex-row sm:items-start">
+                                <div><h3 id="card_nombre_titulo" class="text-lg font-black text-indigo-950"></h3><p id="card_identificadores" class="text-xs text-indigo-600"></p></div>
+                                <span class="self-start rounded-full bg-emerald-100 px-3 py-1 text-xs font-bold text-emerald-700">Colaborador seleccionado</span>
+                            </div>
+                            <div class="grid grid-cols-1 gap-4 text-sm sm:grid-cols-2 lg:grid-cols-4">
+                                <div><span class="text-xs font-bold uppercase text-slate-400">Nombre</span><div id="card_nombre" class="mt-1 font-bold"></div></div>
+                                <div><span class="text-xs font-bold uppercase text-slate-400">Área</span><div id="card_area" class="mt-1 font-bold"></div></div>
+                                <div><span class="text-xs font-bold uppercase text-slate-400">Puesto</span><div id="card_puesto" class="mt-1 font-bold"></div></div>
+                                <div><span class="text-xs font-bold uppercase text-slate-400">Ingreso</span><div id="card_fecha_ingreso" class="mt-1 font-bold"></div></div>
+                                <div><span class="text-xs font-bold uppercase text-slate-400">Líder</span><div id="card_lider" class="mt-1 font-bold"></div></div>
+                                <div><span class="text-xs font-bold uppercase text-slate-400">Correo líder</span><div id="card_correo_lider" class="mt-1 font-bold"></div></div>
+                                <div><span class="text-xs font-bold uppercase text-slate-400">Correo colaborador</span><div id="card_correo" class="mt-1 font-bold"></div></div>
+                                <div><span class="text-xs font-bold uppercase text-slate-400">Horario</span><div id="card_horario" class="mt-1 font-bold"></div></div>
+                            </div>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="rounded-3xl border border-slate-200 bg-white shadow-sm">
+                    <div class="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-violet-50 to-white px-5 py-4 md:px-7">
+                        <div class="flex h-10 w-10 items-center justify-center rounded-full bg-violet-600 font-black text-white shadow-md">2</div>
+                        <div><h2 class="font-black text-indigo-950">Información de las vacaciones</h2><p class="text-xs text-slate-500">Puedes agregar fechas consecutivas o completamente salteadas.</p></div>
+                    </div>
+                    <div class="p-5 md:p-7">
+                        <div class="grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div>
+                                <label class="mb-1 block text-sm font-bold">Tipo de permiso</label>
+                                <select name="tipo_permiso_id" id="tipo_permiso_id" class="w-full rounded-xl border-slate-300 focus:border-violet-500 focus:ring-violet-500" required>
+                                    <option value="">Selecciona una opción</option>
+                                    @foreach($tiposPermisos as $tipo)
+                                        <option value="{{ $tipo->id }}" data-vacaciones="{{ ($tipo->slug === 'vacaciones' || $tipo->descuenta_vacaciones) ? '1' : '0' }}" @selected(old('tipo_permiso_id') == $tipo->id)>{{ $tipo->nombre }}</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="mb-1 block text-sm font-bold">Total de días solicitados</label>
+                                <div class="relative">
+                                    <input type="number" step="0.5" min="0.5" name="dias_solicitados" id="dias_solicitados" value="{{ old('dias_solicitados') }}" class="w-full rounded-xl border-slate-300 bg-slate-50 pr-16 text-lg font-black focus:border-violet-500 focus:ring-violet-500" required>
+                                    <span class="absolute right-4 top-3 text-sm font-bold text-slate-400">días</span>
+                                </div>
+                                <p id="dias_help" class="hidden mt-1 text-xs text-violet-600">Se calcula automáticamente con las fechas agregadas.</p>
+                            </div>
+                        </div>
+
+                        <div id="rango_fechas_group" class="mt-5 grid grid-cols-1 gap-4 md:grid-cols-2">
+                            <div><label class="mb-1 block text-sm font-bold">Fecha inicio</label><input type="date" name="fecha_inicio" id="fecha_inicio" value="{{ old('fecha_inicio') }}" class="w-full rounded-xl border-slate-300" required></div>
+                            <div><label class="mb-1 block text-sm font-bold">Fecha fin</label><input type="date" name="fecha_fin" id="fecha_fin" value="{{ old('fecha_fin') }}" class="w-full rounded-xl border-slate-300" required></div>
+                        </div>
+
+                        <div id="vacaciones_fechas_group" class="mt-5 hidden">
+                            <div class="rounded-2xl border border-violet-100 bg-violet-50/60 p-4">
+                                <div class="mb-3 flex flex-col justify-between gap-2 sm:flex-row sm:items-center">
+                                    <div><div class="font-black text-indigo-950">Agregar día de vacaciones</div><div class="text-xs text-slate-500">Repite este paso por cada fecha. No tienen que ser consecutivas.</div></div>
+                                    <div class="rounded-xl bg-violet-600 px-4 py-2 text-center text-white"><span id="contador_fechas" class="text-xl font-black">0</span><span class="ml-1 text-xs">día(s)</span></div>
+                                </div>
+                                <div class="grid grid-cols-1 gap-3 sm:grid-cols-[1fr_auto]">
+                                    <input type="date" id="fecha_vacacion_input" class="w-full rounded-xl border-violet-200 bg-white focus:border-violet-500 focus:ring-violet-500">
+                                    <button type="button" id="agregar_fecha_vacacion" class="rounded-xl bg-violet-600 px-5 py-3 font-bold text-white shadow-md hover:bg-violet-700">＋ Agregar día</button>
+                                </div>
+                                <div id="mensaje_fechas" class="hidden"></div>
+                            </div>
+
+                            <div class="mt-4 rounded-2xl border-2 border-dashed border-slate-200 bg-slate-50/50 p-4">
+                                <div class="mb-3 font-bold text-slate-700">Días que se descontarán</div>
+                                <div id="fechas_vacaciones_lista" class="flex min-h-12 flex-wrap gap-2"></div>
+                                <div id="fechas_hidden"></div>
+                            </div>
+                        </div>
+
+                        <div class="mt-5">
+                            <label class="mb-1 block text-sm font-bold">Motivo o comentarios adicionales <span class="font-normal text-slate-400">(opcional)</span></label>
+                            <textarea name="motivo" rows="3" class="w-full rounded-xl border-slate-300 focus:border-violet-500 focus:ring-violet-500" placeholder="Agrega alguna indicación necesaria">{{ old('motivo') }}</textarea>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="overflow-hidden rounded-3xl border border-emerald-100 bg-gradient-to-r from-emerald-50 to-cyan-50">
+                    <div class="flex flex-col items-center justify-between gap-5 p-5 md:flex-row md:p-6">
+                        <div class="flex items-start gap-3">
+                            <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-white text-xl shadow-sm">💡</div>
+                            <div><div class="font-black text-emerald-800">Recuerda</div><p class="mt-1 text-sm text-emerald-700">Verifica el saldo y las fechas seleccionadas. El formato será enviado al colaborador, líder y RH.</p></div>
+                        </div>
+                        <button class="w-full rounded-2xl bg-gradient-to-r from-violet-600 to-indigo-600 px-8 py-3.5 font-black text-white shadow-lg shadow-violet-600/20 hover:from-violet-700 hover:to-indigo-700 md:w-auto">
+                            ✈ Enviar solicitud
                         </button>
                     </div>
-
-                    <div class="mt-3 text-sm text-slate-600">
-                        Selecciona solo los días que realmente tomarás. Puedes elegir fechas separadas; el sistema validará horario laboral, días festivos, días inhábiles y solicitudes duplicadas.
-                    </div>
-
-                    <div id="mensaje_fechas" class="hidden mt-3 rounded-xl px-4 py-3 text-sm"></div>
-
-                    <div class="mt-5 grid grid-cols-1 md:grid-cols-[1fr_auto] gap-4 items-center rounded-2xl bg-white border border-blue-100 p-4">
-                        <div>
-                            <div class="text-sm font-semibold text-slate-900">Resumen de vacaciones</div>
-                            <div class="text-xs text-slate-500 mt-1">Solo las fechas mostradas abajo se guardarán y descontarán.</div>
-                        </div>
-                        <div class="rounded-2xl bg-blue-600 text-white px-5 py-3 text-center min-w-32">
-                            <div class="text-xs uppercase tracking-wide text-blue-100">Total</div>
-                            <div class="text-2xl font-black"><span id="contador_fechas">0</span> día(s)</div>
-                        </div>
-                    </div>
-
-                    <div class="mt-4">
-                        <div class="text-sm font-semibold mb-2">Fechas elegidas para descontar</div>
-                        <div id="fechas_vacaciones_lista" class="flex flex-wrap gap-2"></div>
-                        <div id="fechas_hidden"></div>
-                    </div>
-                </div>
-
-                <div class="mt-5">
-                    <label class="block text-sm font-semibold mb-1">Motivo / comentarios</label>
-                    <textarea name="motivo" rows="4" class="w-full rounded-xl border-slate-300">{{ old('motivo') }}</textarea>
-                </div>
-            </div>
-
-            <div class="bg-white rounded-3xl shadow-sm border border-slate-200 p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-                <div class="text-sm text-slate-500">
-                    Al enviar se generará el DOCX y se mandará por correo al colaborador, líder y RH.
-                    Correo RH configurado: <strong>rhformularios@prosalon.mx</strong>.
-                </div>
-                <button class="rounded-xl bg-slate-950 text-white px-8 py-3 hover:bg-slate-800 font-semibold">
-                    Enviar solicitud y generar formato
-                </button>
-            </div>
-        </form>
+                </section>
+            </form>
+        </div>
     </div>
-
+</div>
 <script>
 const input = document.getElementById('empleado_search');
 const results = document.getElementById('empleado_results');
@@ -275,6 +261,7 @@ function renderEmpleado(emp) {
     hideResults();
 
     document.getElementById('empleado_card').classList.remove('hidden');
+    document.getElementById('resumen_vacaciones').classList.remove('opacity-50');
     document.getElementById('card_nombre_titulo').textContent = emp.nombre ?? '';
     document.getElementById('card_identificadores').textContent = `CURP: ${emp.curp || 'Sin CURP'} · RFC: ${emp.rfc || 'Sin RFC'} · No. empleado: ${emp.numero_empleado || 'Sin número'}`;
     document.getElementById('card_nombre').textContent = emp.nombre ?? '';
@@ -406,6 +393,9 @@ function renderFechasVacaciones() {
 
     if (esVacaciones()) {
         diasSolicitados.value = fechas.length || '';
+        if (contadorFechas) contadorFechas.textContent = fechas.length;
+        const resumenSolicitados = document.getElementById('resumen_dias_solicitados');
+        if (resumenSolicitados) resumenSolicitados.textContent = fechas.length;
     }
 }
 
