@@ -30,6 +30,8 @@ class PermisoSolicitud extends Model
         'observaciones_rh',
         'cancelado_at',
         'cancelado_por',
+        'rechazado_at',
+        'rechazado_por',
     ];
 
     protected $casts = [
@@ -40,6 +42,7 @@ class PermisoSolicitud extends Model
         'formato_recibido' => 'boolean',
         'formato_recibido_at' => 'datetime',
         'cancelado_at' => 'datetime',
+        'rechazado_at' => 'datetime',
         'dias_solicitados' => 'decimal:2',
     ];
 
@@ -79,6 +82,42 @@ class PermisoSolicitud extends Model
         return $this->belongsTo(User::class, 'archivo_firmado_por');
     }
 
+
+    public function rechazadoPor()
+    {
+        return $this->belongsTo(User::class, 'rechazado_por');
+    }
+
+    public function esHistorica(): bool
+    {
+        $motivo = mb_strtolower((string) $this->motivo);
+
+        return $this->estatus === 'historico'
+            || str_contains($motivo, 'históric')
+            || str_contains($motivo, 'histor');
+    }
+
+    public function estaAprobada(): bool
+    {
+        return $this->estatus === 'formato_recibido' && (bool) $this->formato_recibido;
+    }
+
+    public function etiquetaEstatus(): string
+    {
+        if ($this->esHistorica()) {
+            return 'Registro histórico';
+        }
+
+        return match ($this->estatus) {
+            'formato_recibido' => 'Aprobada',
+            'rechazado' => 'Rechazada',
+            'cancelado' => 'Cancelada',
+            'con_observaciones' => 'Con observaciones',
+            'formato_generado', 'formato_enviado', 'formato_pendiente', 'pendiente_firma_colaborador' => 'Pendiente de formato',
+            default => 'Pendiente',
+        };
+    }
+
     public function historial()
     {
         return $this->hasMany(PermisoHistorial::class, 'permiso_solicitud_id')->latest();
@@ -86,7 +125,7 @@ class PermisoSolicitud extends Model
 
     public function scopeActivas($query)
     {
-        return $query->whereNotIn('estatus', config('permisos.estatus_no_activos', ['cancelado']));
+        return $query->whereNotIn('estatus', config('permisos.estatus_no_activos', ['cancelado', 'rechazado']));
     }
 
     public static function existeCruceDeFechas(int $empleadoId, string $fechaInicio, string $fechaFin, ?int $ignorarSolicitudId = null): ?self

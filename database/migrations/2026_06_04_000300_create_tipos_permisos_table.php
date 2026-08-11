@@ -48,13 +48,6 @@ return new class extends Migration
                 'requiere_saldo' => false,
             ],
             [
-                'nombre' => 'Permiso médico',
-                'slug' => 'permiso-medico',
-                'descripcion' => 'Permiso por consulta, incapacidad o tema médico.',
-                'descuenta_vacaciones' => false,
-                'requiere_saldo' => false,
-            ],
-            [
                 'nombre' => 'Otro permiso',
                 'slug' => 'otro-permiso',
                 'descripcion' => 'Permiso interno configurable.',

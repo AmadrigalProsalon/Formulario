@@ -23,6 +23,12 @@ class Empleado extends Model
         'vacaciones_ajuste',
         'vacaciones_usados',
         'vacaciones_pendientes',
+        'vacaciones_ganadas_base',
+        'vacaciones_saldo_anterior_base',
+        'vacaciones_saldo_actual_base',
+        'vacaciones_anio_base',
+        'vacaciones_fecha_vencimiento',
+        'vacaciones_fecha_corte',
         'dias_laborales',
     ];
 
@@ -33,6 +39,12 @@ class Empleado extends Model
         'vacaciones_ajuste' => 'decimal:2',
         'vacaciones_usados' => 'decimal:2',
         'vacaciones_pendientes' => 'decimal:2',
+        'vacaciones_ganadas_base' => 'decimal:4',
+        'vacaciones_saldo_anterior_base' => 'decimal:4',
+        'vacaciones_saldo_actual_base' => 'decimal:4',
+        'vacaciones_anio_base' => 'integer',
+        'vacaciones_fecha_vencimiento' => 'date',
+        'vacaciones_fecha_corte' => 'date',
         'dias_laborales' => 'array',
     ];
 
@@ -54,6 +66,13 @@ class Empleado extends Model
     public function permisos()
     {
         return $this->hasMany(PermisoSolicitud::class, 'empleado_id');
+    }
+
+
+    public function getVacacionesDisponiblesAttribute(): float
+    {
+        return (float) app(\App\Services\Permisos\PermisoSaldoService::class)
+            ->resumen($this)['dias_disponibles'];
     }
 
     public function getEtiquetaAttribute(): string

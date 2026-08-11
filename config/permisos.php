@@ -21,7 +21,8 @@ return [
         'formato_pendiente',
         'formato_recibido',
         'con_observaciones',
+        'historico',
     ],
 
-    'estatus_no_activos' => ['cancelado'],
+    'estatus_no_activos' => ['cancelado', 'rechazado'],
 ];

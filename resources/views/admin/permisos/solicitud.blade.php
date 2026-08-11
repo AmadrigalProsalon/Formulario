@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Solicitud de vacaciones</title>
-    @vite(['resources/js/app.js'])
+    @include('partials.design-assets')
 </head>
 <body class="min-h-screen bg-slate-100 text-slate-800">
 <div class="mx-auto max-w-6xl px-3 py-5 sm:px-6 md:py-9">
@@ -52,7 +52,7 @@
                             <div class="flex h-11 w-11 items-center justify-center rounded-2xl bg-violet-100 text-xl text-violet-700">◴</div>
                             <div>
                                 <h2 class="font-black text-indigo-950">Resumen de días disponibles</h2>
-                                <p class="text-xs text-slate-500">El saldo oficial proviene del archivo de RH.</p>
+                                <p class="text-xs text-slate-500">La base proviene del Excel y el proporcional se actualiza automáticamente hasta hoy.</p>
                             </div>
                         </div>
                         <div class="grid grid-cols-1 gap-5 sm:grid-cols-[150px_1fr] sm:items-center">
@@ -61,9 +61,12 @@
                                 <span class="text-xs text-slate-500">días disponibles</span>
                             </div>
                             <div class="divide-y divide-slate-100 text-sm">
-                                <div class="flex justify-between gap-4 py-3"><span class="text-slate-500">Saldo oficial Excel</span><strong id="saldo_correspondientes">0.00 días</strong></div>
-                                <div class="flex justify-between gap-4 py-3"><span class="text-slate-500">Días usados / recibidos</span><strong id="saldo_usados">0.00 días</strong></div>
-                                <div class="flex justify-between gap-4 py-3"><span class="text-slate-500">Pendientes de formato</span><strong id="saldo_pendientes">0.00 días</strong></div>
+                                <div class="flex justify-between gap-4 py-3"><span class="text-slate-500">Saldo año anterior</span><strong id="saldo_anterior">0.00 días</strong></div>
+                                <div class="flex justify-between gap-4 py-3"><span class="text-slate-500">Saldo año actual</span><strong id="saldo_actual">0.00 días</strong></div>
+                                <div class="flex justify-between gap-4 py-3"><span class="text-slate-500">Vence saldo anterior</span><strong id="saldo_vencimiento">--</strong></div>
+                                <div class="flex justify-between gap-4 py-3"><span class="text-slate-500">Días usados / reservados</span><strong id="saldo_usados">0.00 días</strong></div>
+                                <span id="saldo_correspondientes" class="hidden">0</span>
+                                <span id="saldo_pendientes" class="hidden">0</span>
                                 <div class="flex justify-between gap-4 py-3"><span class="font-bold text-indigo-950">Fechas de esta solicitud</span><strong class="text-emerald-700"><span id="resumen_dias_solicitados">0</span> día(s)</strong></div>
                                 <span id="saldo_ajuste" class="hidden">0</span>
                             </div>
@@ -272,7 +275,10 @@ function renderEmpleado(emp) {
     document.getElementById('card_correo_lider').textContent = emp.correo_lider ?? 'Sin correo';
     document.getElementById('card_correo').textContent = emp.correo ?? 'Sin correo';
     document.getElementById('card_horario').textContent = emp.calendario_laboral?.descripcion ?? 'Lunes a viernes';
-    document.getElementById('saldo_correspondientes').textContent = Number(emp.saldo?.saldo_excel ?? emp.saldo?.dias_disponibles ?? 0).toFixed(2);
+    document.getElementById('saldo_correspondientes').textContent = Number(emp.saldo?.dias_ganados_hoy ?? emp.saldo?.saldo_excel ?? 0).toFixed(2);
+    document.getElementById('saldo_anterior').textContent = Number(emp.saldo?.saldo_anio_anterior ?? 0).toFixed(2) + ' días';
+    document.getElementById('saldo_actual').textContent = Number(emp.saldo?.saldo_anio_actual ?? 0).toFixed(2) + ' días';
+    document.getElementById('saldo_vencimiento').textContent = emp.saldo?.fecha_vencimiento ?? '--';
     document.getElementById('saldo_ajuste').textContent = Number(emp.saldo?.dias_correspondientes ?? 0).toFixed(2);
     document.getElementById('saldo_usados').textContent = Number(emp.saldo?.dias_usados ?? 0).toFixed(2);
     document.getElementById('saldo_pendientes').textContent = Number(emp.saldo?.dias_pendientes_formato ?? 0).toFixed(2);

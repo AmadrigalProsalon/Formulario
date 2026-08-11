@@ -25,7 +25,10 @@ class PermisoSolicitudController extends Controller
     {
         return view('permisos.solicitud', [
             'areas' => Area::where('activo', true)->orderBy('nombre')->get(),
-            'tiposPermisos' => TipoPermiso::where('activo', true)->orderBy('nombre')->get(),
+            'tiposPermisos' => TipoPermiso::where('activo', true)
+                ->where('slug', '!=', 'permiso-medico')
+                ->orderBy('nombre')
+                ->get(),
             'firmaDigitalActiva' => config('permisos.firma_digital', false),
         ]);
     }
@@ -116,10 +119,16 @@ class PermisoSolicitudController extends Controller
             return back()->withInput()->with('error', 'Este colaborador ya tiene una solicitud activa que cruza con una de las fechas seleccionadas: #' . $cruce->id . '.');
         }
 
-        if (! $saldoService->validarSaldoSuficiente($empleado, $tipoPermiso, (float) $validated['dias_solicitados'])) {
+        $saldoValido = $esVacaciones
+            ? $saldoService->validarFechasSuficientes($empleado, $tipoPermiso, $fechas)
+            : $saldoService->validarSaldoSuficiente($empleado, $tipoPermiso, (float) $validated['dias_solicitados']);
+
+        if (! $saldoValido) {
             $saldo = $saldoService->resumen($empleado);
 
-            return back()->withInput()->with('error', 'No puedes solicitar ' . $validated['dias_solicitados'] . ' días. Disponible actual de vacaciones: ' . $saldo['dias_disponibles'] . ' días. Los pendientes de formato no descuentan hasta que RH marque formato recibido.');
+            return back()->withInput()->with('error',
+                'No hay saldo suficiente para las fechas seleccionadas. De enero a abril se consumen primero los días del año anterior; desde el 1 de mayo esos días vencen y solo se consideran los del año actual. Disponible mostrado: ' . $saldo['dias_disponibles'] . ' días.'
+            );
         }
 
         try {

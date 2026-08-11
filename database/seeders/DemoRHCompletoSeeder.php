@@ -111,7 +111,6 @@ class DemoRHCompletoSeeder extends Seeder
             ['Vacaciones', 'vacaciones', 1, 1],
             ['Permiso con goce de sueldo', 'permiso-con-goce', 0, 0],
             ['Permiso sin goce de sueldo', 'permiso-sin-goce', 0, 0],
-            ['Permiso médico', 'permiso-medico', 0, 0],
             ['Otro permiso', 'otro-permiso', 0, 0],
         ];
 

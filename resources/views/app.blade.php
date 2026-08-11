@@ -12,7 +12,7 @@
 
         <!-- Scripts -->
         @routes
-        @vite(['resources/js/app.js', "resources/js/Pages/{$page['component']}.vue"])
+        @include('partials.design-assets')
         @inertiaHead
     </head>
     <body class="font-sans antialiased">

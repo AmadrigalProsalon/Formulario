@@ -19,7 +19,7 @@ class PermisosAdminController extends Controller
 {
     public function index(Request $request)
     {
-        $query = PermisoSolicitud::with(['tipoPermiso', 'empleado.area', 'lider', 'area'])
+        $query = PermisoSolicitud::with(['tipoPermiso', 'empleado.area', 'lider', 'area', 'diasSeleccionados'])
             ->latest();
 
         if ($request->filled('area_id')) {
@@ -31,7 +31,17 @@ class PermisosAdminController extends Controller
         }
 
         if ($request->filled('estatus')) {
-            $query->where('estatus', $request->estatus);
+            if ($request->estatus === 'pendiente') {
+                $query->whereIn('estatus', [
+                    'formato_generado',
+                    'formato_enviado',
+                    'formato_pendiente',
+                    'pendiente_firma_colaborador',
+                    'con_observaciones',
+                ]);
+            } else {
+                $query->where('estatus', $request->estatus);
+            }
         }
 
         if ($request->filled('q')) {
@@ -62,7 +72,7 @@ class PermisosAdminController extends Controller
         $query = PermisoSolicitud::with(['tipoPermiso', 'empleado.area', 'area'])
             ->whereDate('fecha_inicio', '<=', $fin->toDateString())
             ->whereDate('fecha_fin', '>=', $inicio->toDateString())
-            ->whereNotIn('estatus', ['cancelado']);
+            ->whereNotIn('estatus', ['cancelado', 'rechazado']);
 
         if ($request->filled('area_id')) {
             $query->where('area_id', $request->area_id);
@@ -101,6 +111,8 @@ class PermisosAdminController extends Controller
             'recibidoPor',
             'archivoFirmadoPor',
             'historial.usuario',
+            'diasSeleccionados',
+            'rechazadoPor',
         ]);
 
         $envios = DB::table('permiso_documento_envios')
@@ -113,17 +125,31 @@ class PermisosAdminController extends Controller
 
     public function marcarRecibido(Request $request, PermisoSolicitud $permiso)
     {
+        if ($permiso->esHistorica()) {
+            return back()->with('error', 'Los registros históricos no requieren aprobación.');
+        }
+
+        if (in_array($permiso->estatus, ['rechazado', 'cancelado'], true)) {
+            return back()->with('error', 'No se puede aprobar una solicitud rechazada o cancelada.');
+        }
+
+        if ($permiso->estaAprobada()) {
+            return back()->with('success', 'La solicitud ya se encuentra aprobada.');
+        }
+
         $permiso->update([
             'estatus' => 'formato_recibido',
             'formato_recibido' => true,
             'formato_recibido_at' => now(),
             'formato_recibido_por' => auth()->id(),
+            'rechazado_at' => null,
+            'rechazado_por' => null,
             'observaciones_rh' => $request->input('observaciones_rh'),
         ]);
 
-        $this->registrarHistorial($permiso, 'formato_recibido', 'RH marcó el formato como recibido.');
+        $this->registrarHistorial($permiso, 'formato_recibido', 'RH aprobó la solicitud. El formato firmado es opcional y puede adjuntarse posteriormente.');
 
-        return back()->with('success', 'Formato marcado como recibido. Si es vacaciones, desde este momento cuenta como usado.');
+        return back()->with('success', 'Solicitud aprobada correctamente. El formato firmado es opcional.');
     }
 
     public function marcarPendiente(PermisoSolicitud $permiso)
@@ -219,25 +245,93 @@ class PermisosAdminController extends Controller
 
     public function subirFormatoFirmado(Request $request, PermisoSolicitud $permiso)
     {
+        if ($permiso->esHistorica()) {
+            return back()->with('error', 'Los registros históricos no requieren formato firmado.');
+        }
+
+        if (in_array($permiso->estatus, ['rechazado', 'cancelado'], true)) {
+            return back()->with('error', 'No se puede aprobar una solicitud rechazada o cancelada.');
+        }
+
         $request->validate([
             'archivo_firmado' => ['required', 'file', 'mimes:pdf,jpg,jpeg,png,doc,docx', 'max:20480'],
+            'observaciones_rh' => ['nullable', 'string', 'max:3000'],
         ]);
+
+        if ($permiso->archivo_firmado_path) {
+            Storage::disk('public')->delete($permiso->archivo_firmado_path);
+        }
 
         $archivo = $request->file('archivo_firmado');
         $path = $archivo->store("permisos/firmados/solicitud_{$permiso->id}", 'public');
 
-        $permiso->update([
+        $actualizacion = [
             'archivo_firmado_path' => $path,
             'archivo_firmado_original' => $archivo->getClientOriginalName(),
             'archivo_firmado_at' => now(),
             'archivo_firmado_por' => auth()->id(),
-        ]);
+        ];
 
-        $this->registrarHistorial($permiso, 'archivo_firmado_subido', 'RH subió el formato firmado escaneado.', [
+        if ($request->filled('observaciones_rh')) {
+            $actualizacion['observaciones_rh'] = $request->input('observaciones_rh');
+        }
+
+        // Adjuntar el archivo es independiente de la aprobación. La solicitud
+        // conserva su estatus actual y RH puede aprobarla antes o después.
+        $permiso->update($actualizacion);
+
+        $this->registrarHistorial($permiso, 'archivo_firmado_subido', 'RH adjuntó el formato firmado como documento de soporte.', [
             'archivo' => $archivo->getClientOriginalName(),
         ]);
 
-        return back()->with('success', 'Formato firmado subido correctamente.');
+        return back()->with('success', 'Formato firmado adjuntado correctamente. El estatus de la solicitud no cambió.');
+    }
+
+
+    public function rechazar(Request $request, PermisoSolicitud $permiso)
+    {
+        if ($permiso->esHistorica()) {
+            return back()->with('error', 'Un registro histórico no puede rechazarse como solicitud.');
+        }
+
+        $validated = $request->validate([
+            'observaciones_rh' => ['required', 'string', 'max:3000'],
+        ], [
+            'observaciones_rh.required' => 'Indica el motivo del rechazo.',
+        ]);
+
+        $permiso->update([
+            'estatus' => 'rechazado',
+            'formato_recibido' => false,
+            'formato_recibido_at' => null,
+            'formato_recibido_por' => null,
+            'rechazado_at' => now(),
+            'rechazado_por' => auth()->id(),
+            'observaciones_rh' => $validated['observaciones_rh'],
+        ]);
+
+        $this->registrarHistorial($permiso, 'rechazado', $validated['observaciones_rh']);
+
+        return back()->with('success', 'Solicitud rechazada. Los días quedaron liberados.');
+    }
+
+    public function destroy(PermisoSolicitud $permiso)
+    {
+        if ($permiso->documento_path) {
+            Storage::disk(config('permisos.documentos_disk', 'public'))->delete($permiso->documento_path);
+        }
+
+        if ($permiso->archivo_firmado_path) {
+            Storage::disk('public')->delete($permiso->archivo_firmado_path);
+        }
+
+        Storage::disk('public')->deleteDirectory("permisos/firmados/solicitud_{$permiso->id}");
+
+        $folio = $permiso->id;
+        $permiso->delete();
+
+        return redirect()->route('admin.permisos.index')
+            ->with('success', "Solicitud #{$folio} eliminada definitivamente.");
     }
 
     public function descargarFormatoFirmado(PermisoSolicitud $permiso): BinaryFileResponse

@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>@yield('title', 'Panel RH')</title>
-    @vite(['resources/js/app.js'])
+    @include('partials.design-assets')
 </head>
 <body class="bg-slate-100 text-slate-800">
 @php

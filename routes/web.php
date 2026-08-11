@@ -8,7 +8,7 @@ use App\Http\Controllers\FormController;
 use App\Http\Controllers\FormularioController;
 use Illuminate\Support\Facades\Route;
 
-Route::get('/', [FormController::class, 'index'])->name('form.index');
+Route::get('/', fn () => redirect()->route('permisos.solicitud.create'))->name('form.index');
 
 Route::get('/f/{formulario:slug}', [FormController::class, 'index'])->name('form.show');
 
@@ -82,18 +82,6 @@ if (file_exists(__DIR__ . '/permisos_documentos.php')) {
 
 /* admin_ux.php deshabilitado: calendario cargado directo desde web.php */
 
-
-Route::middleware(['auth'])
-    ->get('/permisos/calendario', function () {
-        return redirect()->route('admin.permisos.calendario');
-    });
-
-
-
-
-Route::get('/permisos/calendario', function () {
-    return redirect()->route('admin.permisos.calendario');
-})->middleware(['auth']);
 
 
 

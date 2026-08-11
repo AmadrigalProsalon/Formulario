@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Firmar solicitud</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    @vite(['resources/js/app.js'])
+    @include('partials.design-assets')
 </head>
 <body class="bg-slate-100 text-slate-800">
     <div class="max-w-4xl mx-auto py-10 px-4">

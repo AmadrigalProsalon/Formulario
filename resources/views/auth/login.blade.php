@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Iniciar sesión - Panel RH</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    @vite(['resources/js/app.js'])
+    @include('partials.design-assets')
 </head>
 <body class="min-h-screen bg-slate-100 flex items-center justify-center px-4 text-slate-800">
     <div class="w-full max-w-md bg-white rounded-3xl shadow-sm border border-slate-200 p-8">

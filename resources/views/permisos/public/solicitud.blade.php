@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <title>Solicitud de permiso o ausencia</title>
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    @vite(['resources/js/app.js'])
+    @include('partials.design-assets')
 </head>
 <body class="min-h-screen bg-gradient-to-br from-slate-950 via-slate-900 to-slate-800 text-slate-800">
     <div class="max-w-5xl mx-auto py-10 px-4">

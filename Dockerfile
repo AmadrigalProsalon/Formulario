@@ -2,7 +2,7 @@ FROM php:8.2-fpm
 
 WORKDIR /var/www/html
 
-RUN apt-get update && apt-get install -y \
+RUN apt-get update && apt-get install -y --no-install-recommends \
     git \
     curl \
     unzip \
@@ -15,11 +15,8 @@ RUN apt-get update && apt-get install -y \
     libonig-dev \
     libicu-dev \
     default-mysql-client \
-    nodejs \
-    npm \
     && docker-php-ext-configure gd --with-freetype --with-jpeg \
-    && docker-php-ext-install \
-        pdo \
+    && docker-php-ext-install -j"$(nproc)" \
         pdo_mysql \
         mbstring \
         zip \
@@ -34,28 +31,37 @@ RUN apt-get update && apt-get install -y \
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
 
+COPY composer.json composer.lock ./
+RUN composer install \
+    --no-dev \
+    --optimize-autoloader \
+    --no-interaction \
+    --prefer-dist \
+    --no-scripts
+
 COPY . .
 
-RUN composer install --no-dev --optimize-autoloader --no-interaction --prefer-dist
-RUN npm install && npm run build
-
-RUN mkdir -p storage/logs \
-    storage/app \
-    storage/app/public \
-    storage/app/templates \
-    storage/framework/cache \
-    storage/framework/sessions \
-    storage/framework/views \
-    bootstrap/cache
+RUN APP_KEY=base64:4XWVeGm49Ph+8r2lYbE3LBM/GL3dJ4Y9xpE8qBvVkJ0= APP_ENV=production \
+    composer dump-autoload --no-dev --optimize --no-interaction \
+    && mkdir -p \
+        storage/logs \
+        storage/app/public \
+        storage/app/templates \
+        storage/framework/cache/data \
+        storage/framework/sessions \
+        storage/framework/views \
+        bootstrap/cache \
+    && printf '[www]\nlisten = 0.0.0.0:9000\nclear_env = no\ncatch_workers_output = yes\n' \
+        > /usr/local/etc/php-fpm.d/zz-formulario-rh.conf
 
 COPY docker/php/local.ini /usr/local/etc/php/conf.d/local.ini
-COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
+COPY docker/entrypoint.sh /usr/local/bin/formulario-entrypoint
 
-RUN chmod +x /usr/local/bin/entrypoint.sh
-RUN chown -R www-data:www-data /var/www/html \
+RUN chmod +x /usr/local/bin/formulario-entrypoint \
+    && chown -R www-data:www-data /var/www/html \
     && chmod -R 775 storage bootstrap/cache
 
 EXPOSE 9000
 
-ENTRYPOINT ["entrypoint.sh"]
-CMD ["php-fpm"]
+ENTRYPOINT ["formulario-entrypoint"]
+CMD ["php-fpm", "-F"]

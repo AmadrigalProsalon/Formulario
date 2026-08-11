@@ -8,7 +8,8 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('perfiles_puesto', function (Blueprint $table) {
+        if (! Schema::hasTable('perfiles_puesto')) {
+            Schema::create('perfiles_puesto', function (Blueprint $table) {
             $table->id();
             $table->string('nombre_puesto')->index();
             $table->string('codigo')->nullable();
@@ -27,9 +28,11 @@ return new class extends Migration
             $table->boolean('activo')->default(true)->index();
             $table->longText('raw_text')->nullable();
             $table->timestamps();
-        });
+            });
+        }
 
-        Schema::create('perfil_puesto_responsabilidades', function (Blueprint $table) {
+        if (! Schema::hasTable('perfil_puesto_responsabilidades')) {
+            Schema::create('perfil_puesto_responsabilidades', function (Blueprint $table) {
             $table->id();
             $table->foreignId('perfil_puesto_id')
                 ->constrained('perfiles_puesto')
@@ -38,7 +41,8 @@ return new class extends Migration
             $table->longText('descripcion')->nullable();
             $table->integer('orden')->default(1);
             $table->timestamps();
-        });
+            });
+        }
     }
 
     public function down(): void

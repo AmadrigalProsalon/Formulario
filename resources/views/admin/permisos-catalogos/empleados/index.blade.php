@@ -19,12 +19,57 @@
             <p class="mt-2 max-w-2xl text-sm text-indigo-100 md:text-base">Consulta y actualiza la información de cada colaborador sin perder de vista su líder, horario y saldo oficial.</p>
         </div>
         <div class="flex flex-wrap gap-3">
+            @if(Route::has('admin.permisos.empleados.exportar'))
+                <a href="{{ route('admin.permisos.empleados.exportar', request()->only(['q', 'area_id', 'activo'])) }}" class="rounded-2xl border border-white/30 bg-white/10 px-5 py-3 font-bold text-white shadow-lg backdrop-blur hover:bg-white/20">↓ Exportar saldos e históricos</a>
+            @endif
             @if(Route::has('admin.permisos.empleados.importar'))
                 <a href="{{ route('admin.permisos.empleados.importar') }}" class="rounded-2xl bg-white px-5 py-3 font-bold text-indigo-950 shadow-lg hover:bg-indigo-50">↑ Importar Excel/CSV</a>
             @endif
         </div>
     </div>
 </div>
+
+<details class="mb-6 overflow-hidden rounded-3xl border border-violet-200 bg-white shadow-sm" @if($errors->any()) open @endif>
+    <summary class="cursor-pointer list-none bg-gradient-to-r from-violet-50 to-indigo-50 px-6 py-5 font-black text-violet-900 hover:from-violet-100 hover:to-indigo-100">
+        <span class="inline-flex items-center gap-2"><span class="flex h-8 w-8 items-center justify-center rounded-xl bg-violet-600 text-white">+</span> Añadir empleado manualmente</span>
+    </summary>
+    <form method="POST" action="{{ route('admin.permisos.empleados.store') }}" class="p-6">
+        @csrf
+        <div class="mb-5">
+            <h2 class="text-xl font-black text-slate-950">Nuevo empleado</h2>
+            <p class="mt-1 text-sm text-slate-500">No es necesario usar el archivo CSV. Al guardar, el colaborador quedará disponible de inmediato en el formulario de vacaciones y permisos.</p>
+        </div>
+
+        <div class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+            <div><label class="mb-1 block text-sm font-bold text-slate-700">Número de empleado</label><input type="text" name="numero_empleado" value="{{ old('numero_empleado') }}" class="w-full rounded-xl border-slate-300" placeholder="Ej. 2430"></div>
+            <div class="md:col-span-2"><label class="mb-1 block text-sm font-bold text-slate-700">Nombre completo *</label><input type="text" name="nombre" value="{{ old('nombre') }}" required class="w-full rounded-xl border-slate-300" placeholder="Nombre del colaborador"></div>
+            <div><label class="mb-1 block text-sm font-bold text-slate-700">Correo</label><input type="email" name="correo" value="{{ old('correo') }}" class="w-full rounded-xl border-slate-300" placeholder="correo@prosalon.mx"></div>
+
+            <div><label class="mb-1 block text-sm font-bold text-slate-700">CURP</label><input type="text" name="curp" value="{{ old('curp') }}" maxlength="18" class="w-full rounded-xl border-slate-300 uppercase"></div>
+            <div><label class="mb-1 block text-sm font-bold text-slate-700">RFC</label><input type="text" name="rfc" value="{{ old('rfc') }}" maxlength="13" class="w-full rounded-xl border-slate-300 uppercase"></div>
+            <div><label class="mb-1 block text-sm font-bold text-slate-700">Puesto</label><input type="text" name="puesto" value="{{ old('puesto') }}" class="w-full rounded-xl border-slate-300"></div>
+            <div><label class="mb-1 block text-sm font-bold text-slate-700">Fecha de ingreso</label><input type="date" name="fecha_ingreso" value="{{ old('fecha_ingreso') }}" class="w-full rounded-xl border-slate-300"></div>
+
+            <div><label class="mb-1 block text-sm font-bold text-slate-700">Departamento</label><select name="area_id" class="w-full rounded-xl border-slate-300"><option value="">Sin departamento</option>@foreach($areas as $area)<option value="{{ $area->id }}" @selected(old('area_id') == $area->id)>{{ $area->nombre }}</option>@endforeach</select></div>
+            <div><label class="mb-1 block text-sm font-bold text-slate-700">Líder</label><select name="lider_id" class="w-full rounded-xl border-slate-300"><option value="">Sin líder</option>@foreach($lideres as $lider)<option value="{{ $lider->id }}" @selected(old('lider_id') == $lider->id)>{{ $lider->nombre }}</option>@endforeach</select></div>
+            <div><label class="mb-1 block text-sm font-bold text-slate-700">Saldo año anterior</label><input type="number" min="0" step="0.01" name="vacaciones_saldo_anterior_base" value="{{ old('vacaciones_saldo_anterior_base', 0) }}" class="w-full rounded-xl border-slate-300"></div>
+            <div><label class="mb-1 block text-sm font-bold text-slate-700">Saldo año actual</label><input type="number" min="0" step="0.01" name="vacaciones_saldo_actual_base" value="{{ old('vacaciones_saldo_actual_base', 0) }}" class="w-full rounded-xl border-slate-300"></div>
+            <div><label class="mb-1 block text-sm font-bold text-slate-700">Fecha de corte del saldo</label><input type="date" name="vacaciones_fecha_corte" value="{{ old('vacaciones_fecha_corte', now()->format('Y-m-d')) }}" max="{{ now()->format('Y-m-d') }}" class="w-full rounded-xl border-slate-300"></div>
+
+            <div class="xl:col-span-2"><label class="mb-2 block text-sm font-bold text-slate-700">Días laborales especiales</label><div class="grid grid-cols-7 gap-2">@foreach([1=>'L',2=>'M',3=>'X',4=>'J',5=>'V',6=>'S',7=>'D'] as $numeroDia=>$etiquetaDia)<label class="cursor-pointer"><input type="checkbox" name="dias_laborales[]" value="{{ $numeroDia }}" class="peer sr-only" @checked(in_array($numeroDia, old('dias_laborales', [])))><span class="flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-500 peer-checked:border-violet-500 peer-checked:bg-violet-600 peer-checked:text-white">{{ $etiquetaDia }}</span></label>@endforeach</div><p class="mt-1 text-xs text-slate-400">Déjalo vacío para usar el horario del departamento.</p></div>
+            <div class="flex flex-col justify-end gap-2"><label class="inline-flex items-center gap-2 rounded-xl bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-800"><input type="checkbox" name="es_lider" value="1" class="rounded border-violet-300 text-violet-600" @checked(old('es_lider'))> Es líder</label><label class="inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800"><input type="checkbox" name="activo" value="1" class="rounded border-emerald-300 text-emerald-600" @checked(old('activo', true))> Empleado activo</label></div>
+        </div>
+
+        @if($errors->any())
+            <div class="mt-5 rounded-2xl border border-rose-200 bg-rose-50 p-4 text-sm text-rose-800">
+                <div class="font-black">Revisa la información:</div>
+                <ul class="mt-2 list-disc pl-5">@foreach($errors->all() as $error)<li>{{ $error }}</li>@endforeach</ul>
+            </div>
+        @endif
+
+        <div class="mt-6 flex justify-end"><button class="rounded-xl bg-violet-600 px-6 py-3 font-bold text-white shadow-sm hover:bg-violet-700">Guardar empleado</button></div>
+    </form>
+</details>
 
 <div class="mb-6 grid grid-cols-2 gap-4 lg:grid-cols-4">
     <div class="rounded-3xl border border-slate-200 bg-white p-5 shadow-sm"><div class="text-xs font-bold uppercase tracking-wider text-slate-400">Total empleados</div><div class="mt-2 text-3xl font-black text-slate-950">{{ $empleados->total() }}</div></div>
@@ -45,6 +90,7 @@
 <div class="space-y-4">
     @forelse($empleados as $empleado)
         @php($diasEmpleado = $empleado->dias_laborales ?? [])
+        @php($saldo = $empleado->saldo_calculado ?? [])
         <form id="empleado-{{ $empleado->id }}" method="POST" action="{{ route('admin.permisos.empleados.update', $empleado) }}" class="overflow-hidden rounded-3xl border border-slate-200 bg-white shadow-sm transition hover:-translate-y-0.5 hover:shadow-lg">
             @csrf @method('PUT')
             <div class="flex flex-col gap-4 border-b border-slate-100 bg-gradient-to-r from-slate-50 via-white to-violet-50/40 p-5 md:flex-row md:items-center md:justify-between">
@@ -52,7 +98,10 @@
                     <div class="flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-violet-600 to-indigo-600 text-lg font-black text-white shadow-md">{{ strtoupper(substr($empleado->nombre ?? 'E', 0, 1)) }}</div>
                     <div class="min-w-0"><div class="flex flex-wrap items-center gap-2"><h2 class="truncate text-lg font-black text-slate-950">{{ $empleado->nombre }}</h2>@if($empleado->es_lider)<span class="rounded-full bg-violet-100 px-2.5 py-1 text-[11px] font-bold text-violet-700">Líder</span>@endif<span class="rounded-full {{ $empleado->activo ? 'bg-emerald-100 text-emerald-700' : 'bg-slate-200 text-slate-500' }} px-2.5 py-1 text-[11px] font-bold">{{ $empleado->activo ? 'Activo' : 'Inactivo' }}</span></div><p class="mt-1 truncate text-sm text-slate-500">#{{ $empleado->numero_empleado ?: 'Sin número' }} · {{ $empleado->puesto ?: 'Sin puesto' }}</p></div>
                 </div>
-                <button class="rounded-xl bg-slate-950 px-5 py-2.5 font-bold text-white shadow-sm hover:bg-slate-800">Guardar cambios</button>
+                <div class="flex flex-wrap items-center gap-2">
+                    <button type="submit" form="eliminar-empleado-{{ $empleado->id }}" class="rounded-xl border border-rose-200 bg-rose-50 px-4 py-2.5 font-bold text-rose-700 hover:bg-rose-100">Eliminar empleado</button>
+                    <button type="submit" class="rounded-xl bg-slate-950 px-5 py-2.5 font-bold text-white shadow-sm hover:bg-slate-800">Guardar cambios</button>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 gap-6 p-5 md:p-6 xl:grid-cols-12">
@@ -60,10 +109,35 @@
 
                 <section class="xl:col-span-3"><div class="mb-3 text-xs font-black uppercase tracking-[.15em] text-slate-400">Organización</div><div class="space-y-3"><select name="area_id" class="w-full rounded-xl border-slate-300"><option value="">Sin departamento</option>@foreach($areas as $area)<option value="{{ $area->id }}" @selected($empleado->area_id == $area->id)>{{ $area->nombre }}</option>@endforeach</select><select name="lider_id" class="w-full rounded-xl border-slate-300"><option value="">Sin líder</option>@foreach($lideres as $lider)<option value="{{ $lider->id }}" @selected($empleado->lider_id == $lider->id)>{{ $lider->nombre }}</option>@endforeach</select><input type="text" name="puesto" value="{{ $empleado->puesto }}" placeholder="Puesto" class="w-full rounded-xl border-slate-300"><label class="inline-flex items-center gap-2 rounded-xl bg-violet-50 px-3 py-2 text-sm font-semibold text-violet-800"><input type="checkbox" name="es_lider" value="1" class="rounded border-violet-300 text-violet-600" @checked($empleado->es_lider)> Es líder</label></div></section>
 
-                <section class="xl:col-span-3"><div class="mb-3 text-xs font-black uppercase tracking-[.15em] text-slate-400">Ingreso y saldo</div><div class="space-y-3"><div><label class="mb-1 block text-xs font-bold text-slate-500">Fecha de ingreso</label><input type="date" name="fecha_ingreso" value="{{ $empleado->fecha_ingreso?->format('Y-m-d') }}" class="w-full rounded-xl border-slate-300"></div><div><label class="mb-1 block text-xs font-bold text-slate-500">Saldo oficial Excel</label><div class="rounded-2xl border border-emerald-200 bg-emerald-50 p-4"><div class="text-2xl font-black text-emerald-700">{{ number_format((float) ($empleado->vacaciones_pendientes ?? 0), 2) }}</div><div class="text-xs text-emerald-600">días disponibles</div></div></div><div><label class="mb-1 block text-xs font-bold text-slate-500">Ajuste manual</label><input type="number" step="0.01" name="vacaciones_ajuste" value="{{ number_format((float)($empleado->vacaciones_ajuste ?? 0), 2, '.', '') }}" class="w-full rounded-xl border-slate-300"></div></div></section>
+                <section class="xl:col-span-3">
+                    <div class="mb-3 text-xs font-black uppercase tracking-[.15em] text-slate-400">Ingreso y vacaciones</div>
+                    <div class="space-y-3">
+                        <div><label class="mb-1 block text-xs font-bold text-slate-500">Fecha de ingreso</label><input type="date" name="fecha_ingreso" value="{{ $empleado->fecha_ingreso?->format('Y-m-d') }}" class="w-full rounded-xl border-slate-300"></div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><label class="mb-1 block text-xs font-bold text-slate-500">Base ganada Excel</label><input type="number" min="0" step="0.0001" name="vacaciones_ganadas_base" value="{{ number_format((float)($empleado->vacaciones_ganadas_base ?? 0), 4, '.', '') }}" class="w-full rounded-xl border-slate-300"></div>
+                            <div><label class="mb-1 block text-xs font-bold text-slate-500">Fecha de corte</label><input type="date" name="vacaciones_fecha_corte" value="{{ $empleado->vacaciones_fecha_corte?->format('Y-m-d') }}" class="w-full rounded-xl border-slate-300"></div>
+                        </div>
+                        <div class="rounded-2xl border border-emerald-200 bg-gradient-to-br from-emerald-50 to-white p-4">
+                            <div class="flex items-center justify-between"><span class="text-xs font-bold uppercase text-emerald-600">Disponible hoy</span><strong class="text-2xl font-black text-emerald-700">{{ number_format((float)($saldo['dias_disponibles'] ?? 0), 2) }}</strong></div>
+                            <div class="mt-3 grid grid-cols-2 gap-2 text-xs text-slate-600">
+                                <div>Año anterior<br><strong>{{ number_format((float)($saldo['saldo_anio_anterior'] ?? 0), 2) }}</strong></div>
+                                <div>Año actual<br><strong>{{ number_format((float)($saldo['saldo_anio_actual'] ?? 0), 2) }}</strong></div>
+                                <div>Días tomados<br><strong>-{{ number_format((float)($saldo['dias_tomados'] ?? 0), 2) }}</strong></div>
+                                <div>Apartados/pendientes<br><strong>-{{ number_format((float)($saldo['dias_apartados'] ?? 0), 2) }}</strong></div>
+                                <div>Tomados + apartados<br><strong>-{{ number_format((float)($saldo['dias_usados'] ?? 0), 2) }}</strong></div>
+                                <div>Vence anterior<br><strong>{{ $saldo['fecha_vencimiento'] ?? '--' }}</strong></div>
+                            </div>
+                        </div>
+                        <input type="hidden" name="vacaciones_ajuste" value="0">
+                    </div>
+                </section>
 
                 <section class="xl:col-span-3"><div class="mb-3 text-xs font-black uppercase tracking-[.15em] text-slate-400">Horario laboral especial</div><div class="rounded-2xl border border-slate-200 bg-slate-50 p-4"><div class="grid grid-cols-4 gap-2">@foreach([1=>'Lun',2=>'Mar',3=>'Mié',4=>'Jue',5=>'Vie',6=>'Sáb',7=>'Dom'] as $numeroDia=>$etiquetaDia)<label class="cursor-pointer"><input type="checkbox" name="dias_laborales[]" value="{{ $numeroDia }}" class="peer sr-only" @checked(in_array($numeroDia,$diasEmpleado,true))><span class="flex h-10 items-center justify-center rounded-xl border border-slate-200 bg-white text-xs font-bold text-slate-500 transition peer-checked:border-violet-500 peer-checked:bg-violet-600 peer-checked:text-white">{{ $etiquetaDia }}</span></label>@endforeach</div><p class="mt-3 text-xs leading-relaxed text-slate-500">Sin selección se usa el horario del área o L–V por defecto.</p></div><label class="mt-3 inline-flex items-center gap-2 rounded-xl bg-emerald-50 px-3 py-2 text-sm font-semibold text-emerald-800"><input type="checkbox" name="activo" value="1" class="rounded border-emerald-300 text-emerald-600" @checked($empleado->activo)> Empleado activo</label></section>
             </div>
+        </form>
+        <form id="eliminar-empleado-{{ $empleado->id }}" method="POST" action="{{ route('admin.permisos.empleados.destroy', $empleado) }}" class="hidden" onsubmit="return confirm('¿Eliminar definitivamente este empleado? También se eliminarán sus solicitudes e históricos. Esta acción no se puede deshacer.')">
+            @csrf
+            @method('DELETE')
         </form>
     @empty
         <div class="rounded-3xl border-2 border-dashed border-slate-200 bg-white p-12 text-center text-slate-500">No hay empleados con esos filtros.</div>

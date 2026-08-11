@@ -5,14 +5,24 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\Area;
 use App\Models\Empleado;
+use App\Models\PermisoSolicitud;
+use App\Services\Permisos\PermisoSaldoService;
 use Carbon\Carbon;
 use DateTime;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Illuminate\Validation\Rule;
 use PhpOffice\PhpSpreadsheet\IOFactory;
+use PhpOffice\PhpSpreadsheet\Spreadsheet;
+use PhpOffice\PhpSpreadsheet\Style\Alignment;
+use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Writer\Xlsx;
 use PhpOffice\PhpSpreadsheet\Shared\Date as ExcelDate;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PermisosEmpleadosController extends Controller
 {
@@ -20,36 +30,262 @@ class PermisosEmpleadosController extends Controller
 
     public function index(Request $request)
     {
-        $query = Empleado::with(['area', 'lider'])->orderBy('nombre');
-
-        if ($request->filled('area_id')) {
-            $query->where('area_id', $request->area_id);
-        }
-
-        if ($request->filled('activo')) {
-            $query->where('activo', $request->activo === '1');
-        }
-
-        if ($request->filled('q')) {
-            $q = trim($request->q);
-            $normalizado = Str::upper(preg_replace('/[^A-Za-z0-9]/', '', $q));
-
-            $query->where(function ($sub) use ($q, $normalizado) {
-                $sub->where('nombre', 'like', "%{$q}%")
-                    ->orWhere('correo', 'like', "%{$q}%")
-                    ->orWhere('numero_empleado', 'like', "%{$q}%")
-                    ->orWhere('curp', 'like', "%{$normalizado}%")
-                    ->orWhere('rfc', 'like', "%{$normalizado}%")
-                    ->orWhere('puesto', 'like', "%{$q}%");
-            });
-        }
+        $empleados = $this->empleadosQuery($request)
+            ->paginate(25)
+            ->withQueryString();
+        $saldoService = app(PermisoSaldoService::class);
+        $empleados->getCollection()->each(function (Empleado $empleado) use ($saldoService) {
+            $empleado->setAttribute('saldo_calculado', $saldoService->resumen($empleado));
+        });
 
         return view('admin.permisos-catalogos.empleados.index', [
-            'empleados' => $query->paginate(25)->withQueryString(),
+            'empleados' => $empleados,
             'areas' => Area::orderBy('nombre')->get(),
             'lideres' => Empleado::where('es_lider', true)->orderBy('nombre')->get(),
             'filters' => $request->only(['area_id', 'activo', 'q']),
         ]);
+    }
+
+
+    public function export(Request $request): StreamedResponse
+    {
+        // Los registros auxiliares creados para líderes usan números como
+        // LIDER-XXXXXXXX. No son colaboradores y no deben salir en el Excel.
+        $empleados = $this->empleadosQuery($request)
+            ->where(function ($query) {
+                $query->whereNull('numero_empleado')
+                    ->orWhereRaw('UPPER(numero_empleado) NOT LIKE ?', ['LIDER%']);
+            })
+            ->get();
+        $saldoService = app(PermisoSaldoService::class);
+
+        $spreadsheet = new Spreadsheet();
+        $spreadsheet->getProperties()
+            ->setCreator('Formularios RH')
+            ->setTitle('Empleados, saldos e historial de vacaciones')
+            ->setSubject('Exportación de empleados y vacaciones')
+            ->setDescription('Saldos actuales e historial de vacaciones generado desde Formularios RH.');
+
+        $sheet = $spreadsheet->getActiveSheet();
+        $sheet->setTitle('Concentrado');
+
+        $headers = [
+            'Número de empleado',
+            'Nombre',
+            'CURP',
+            'RFC',
+            'Correo',
+            'Departamento',
+            'Puesto',
+            'Líder',
+            'Fecha de ingreso',
+            'Estado',
+            'Fecha de corte',
+            'Base Excel',
+            'Saldo año anterior',
+            'Saldo año actual',
+            'Proporcional generado',
+            'Días tomados',
+            'Días apartados o pendientes',
+            'Días disponibles',
+            'Vencimiento saldo anterior',
+        ];
+
+        $sheet->fromArray($headers, null, 'A1');
+        $fila = 2;
+
+        foreach ($empleados as $empleado) {
+            $saldo = $saldoService->resumen($empleado);
+
+            $sheet->fromArray([
+                $empleado->numero_empleado,
+                $empleado->nombre,
+                $empleado->curp,
+                $empleado->rfc,
+                $empleado->correo,
+                $empleado->area?->nombre,
+                $empleado->puesto,
+                $empleado->lider?->nombre,
+                $empleado->fecha_ingreso?->format('d/m/Y'),
+                $empleado->activo ? 'Activo' : 'Inactivo',
+                $saldo['fecha_corte_formato'] ?? null,
+                (float) ($saldo['dias_base_excel'] ?? 0),
+                (float) ($saldo['saldo_anio_anterior'] ?? 0),
+                (float) ($saldo['saldo_anio_actual'] ?? 0),
+                (float) ($saldo['proporcional_generado'] ?? 0),
+                (float) ($saldo['dias_tomados'] ?? 0),
+                (float) ($saldo['dias_apartados'] ?? 0),
+                (float) ($saldo['dias_disponibles'] ?? 0),
+                $saldo['fecha_vencimiento'] ?? null,
+            ], null, "A{$fila}");
+
+            $fila++;
+        }
+
+        if ($fila > 2) {
+            $sheet->getStyle('L2:R' . ($fila - 1))
+                ->getNumberFormat()
+                ->setFormatCode('0.00');
+        }
+
+        $this->estilizarHoja($sheet, 'S', max(1, $fila - 1));
+
+        $historialSheet = $spreadsheet->createSheet();
+        $historialSheet->setTitle('Historial vacaciones');
+
+        $historialHeaders = [
+            'Folio',
+            'Número de empleado',
+            'Colaborador',
+            'Departamento',
+            'Tipo',
+            'Origen',
+            'Estatus',
+            'Fecha inicial',
+            'Fecha final',
+            'Días',
+            'Fechas seleccionadas',
+            'Fecha de registro',
+            'Fecha de aprobación',
+            'Fecha de rechazo',
+            'Motivo / referencia',
+            'Observaciones RH',
+        ];
+
+        $historialSheet->fromArray($historialHeaders, null, 'A1');
+
+        $empleadosIds = $empleados->pluck('id');
+        $historial = PermisoSolicitud::with([
+                'empleado.area',
+                'area',
+                'tipoPermiso',
+                'diasSeleccionados',
+            ])
+            ->whereIn('empleado_id', $empleadosIds->all())
+            ->whereHas('tipoPermiso', function ($query) {
+                $query->where('descuenta_vacaciones', true)
+                    ->orWhere('slug', 'vacaciones');
+            })
+            ->orderBy('fecha_inicio')
+            ->orderBy('id')
+            ->get();
+
+        $filaHistorial = 2;
+
+        foreach ($historial as $solicitud) {
+            $fechasSeleccionadas = $solicitud->diasSeleccionados
+                ->map(fn ($dia) => $dia->fecha?->format('d/m/Y'))
+                ->filter()
+                ->implode(', ');
+
+            $historialSheet->fromArray([
+                $solicitud->id,
+                $solicitud->empleado?->numero_empleado,
+                $solicitud->empleado?->nombre,
+                $solicitud->area?->nombre ?? $solicitud->empleado?->area?->nombre,
+                $solicitud->tipoPermiso?->nombre,
+                $solicitud->esHistorica() ? 'Registro histórico' : 'Solicitud',
+                $solicitud->etiquetaEstatus(),
+                $solicitud->fecha_inicio?->format('d/m/Y'),
+                $solicitud->fecha_fin?->format('d/m/Y'),
+                (float) $solicitud->dias_solicitados,
+                $fechasSeleccionadas,
+                $solicitud->created_at?->format('d/m/Y H:i'),
+                $solicitud->formato_recibido_at?->format('d/m/Y H:i'),
+                $solicitud->rechazado_at?->format('d/m/Y H:i'),
+                $solicitud->motivo,
+                $solicitud->observaciones_rh,
+            ], null, "A{$filaHistorial}");
+
+            $filaHistorial++;
+        }
+
+        if ($filaHistorial > 2) {
+            $historialSheet->getStyle('J2:J' . ($filaHistorial - 1))
+                ->getNumberFormat()
+                ->setFormatCode('0.00');
+        }
+
+        $this->estilizarHoja($historialSheet, 'P', max(1, $filaHistorial - 1));
+        $historialSheet->getColumnDimension('K')->setWidth(42);
+        $historialSheet->getColumnDimension('O')->setWidth(48);
+        $historialSheet->getColumnDimension('P')->setWidth(48);
+        $historialSheet->getStyle('K2:P' . max(2, $filaHistorial - 1))
+            ->getAlignment()
+            ->setWrapText(true)
+            ->setVertical(Alignment::VERTICAL_TOP);
+
+        $spreadsheet->setActiveSheetIndex(0);
+        $nombreArchivo = 'empleados_saldos_historico_' . now()->format('Ymd_His') . '.xlsx';
+
+        return response()->streamDownload(function () use ($spreadsheet) {
+            $writer = new Xlsx($spreadsheet);
+            $writer->save('php://output');
+            $spreadsheet->disconnectWorksheets();
+        }, $nombreArchivo, [
+            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+            'Cache-Control' => 'max-age=0, no-cache, no-store, must-revalidate',
+        ]);
+    }
+
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'area_id' => ['nullable', 'exists:areas,id'],
+            'lider_id' => ['nullable', 'exists:empleados,id'],
+            'numero_empleado' => ['nullable', 'string', 'max:50', Rule::unique('empleados', 'numero_empleado')],
+            'curp' => ['nullable', 'string', 'max:18'],
+            'rfc' => ['nullable', 'string', 'max:13'],
+            'nombre' => ['required', 'string', 'max:255'],
+            'correo' => ['nullable', 'email', 'max:255'],
+            'puesto' => ['nullable', 'string', 'max:255'],
+            'fecha_ingreso' => ['nullable', 'date'],
+            'vacaciones_saldo_anterior_base' => ['nullable', 'numeric', 'min:0'],
+            'vacaciones_saldo_actual_base' => ['nullable', 'numeric', 'min:0'],
+            'vacaciones_fecha_corte' => ['nullable', 'date', 'before_or_equal:today'],
+            'es_lider' => ['nullable', 'boolean'],
+            'activo' => ['nullable', 'boolean'],
+            'dias_laborales' => ['nullable', 'array'],
+            'dias_laborales.*' => ['integer', 'between:1,7'],
+        ], [
+            'numero_empleado.unique' => 'Ese número de empleado ya está registrado.',
+            'nombre.required' => 'El nombre del empleado es obligatorio.',
+        ]);
+
+        $validated['numero_empleado'] = filled($validated['numero_empleado'] ?? null)
+            ? trim($validated['numero_empleado'])
+            : null;
+        $validated['correo'] = filled($validated['correo'] ?? null)
+            ? mb_strtolower(trim($validated['correo']))
+            : null;
+        $validated['curp'] = $this->normalizarClave($validated['curp'] ?? null);
+        $validated['rfc'] = $this->normalizarClave($validated['rfc'] ?? null);
+        $validated['es_lider'] = $request->boolean('es_lider');
+        $validated['activo'] = $request->boolean('activo', true);
+        $validated['dias_laborales'] = $request->filled('dias_laborales')
+            ? array_values(array_unique(array_map('intval', $request->input('dias_laborales', []))))
+            : null;
+
+        $fechaCorte = Carbon::parse($validated['vacaciones_fecha_corte'] ?? now()->toDateString());
+        $saldoAnterior = round((float) ($validated['vacaciones_saldo_anterior_base'] ?? 0), 4);
+        $saldoActual = round((float) ($validated['vacaciones_saldo_actual_base'] ?? 0), 4);
+
+        $validated['vacaciones_saldo_anterior_base'] = $saldoAnterior;
+        $validated['vacaciones_saldo_actual_base'] = $saldoActual;
+        $validated['vacaciones_ganadas_base'] = round($saldoAnterior + $saldoActual, 4);
+        $validated['vacaciones_fecha_corte'] = $fechaCorte->toDateString();
+        $validated['vacaciones_anio_base'] = $fechaCorte->year;
+        $validated['vacaciones_fecha_vencimiento'] = Carbon::create($fechaCorte->year, 4, 30)->toDateString();
+        $validated['vacaciones_ajuste'] = 0;
+        $validated['vacaciones_usados'] = 0;
+        $validated['vacaciones_pendientes'] = 0;
+
+        $empleado = Empleado::create($validated);
+
+        return redirect()
+            ->route('admin.permisos.empleados.index', ['q' => $empleado->numero_empleado ?: $empleado->nombre])
+            ->with('success', 'Empleado agregado manualmente. Ya puede usarse en las solicitudes.');
     }
 
     public function importForm()
@@ -61,9 +297,11 @@ class PermisosEmpleadosController extends Controller
     {
         $request->validate([
             'archivo' => ['required', 'file', 'mimes:csv,txt,xlsx,xls'],
+            'fecha_corte' => ['required', 'date', 'before_or_equal:today'],
         ]);
 
         $this->ensureImportSchema();
+        $fechaCorte = Carbon::parse($request->input('fecha_corte'))->startOfDay();
 
         $rows = $this->leerArchivo($request->file('archivo'));
 
@@ -75,6 +313,18 @@ class PermisosEmpleadosController extends Controller
 
         if (empty($headers)) {
             return back()->with('error', 'No pude detectar encabezados como CLAVE, NOMBRE, DEPARTAMENTO, PUESTO o FECHA INGRESO.');
+        }
+
+        // Esta es la columna oficial indicada por RH. normalizeHeader() elimina
+        // acentos, espacios adicionales y el espacio final que trae el CSV.
+        $columnaSaldoOficial = $this->normalizeHeader(
+            'DIAS GANADOS AL DIA DE HOY MÁS LOS PROPORCIONALES DEL AÑO ACTUAL'
+        );
+
+        if (! array_key_exists($columnaSaldoOficial, $headers)) {
+            return back()->with('error',
+                'No se encontró la columna oficial: DIAS GANADOS AL DIA DE HOY MÁS LOS PROPORCIONALES DEL AÑO ACTUAL.'
+            );
         }
 
         $creados = 0;
@@ -157,32 +407,36 @@ class PermisosEmpleadosController extends Controller
                     'FECHA_ENTRADA',
                 ]));
 
-                $correo = $this->limpiarTexto($this->value($row, $headers, [
+                // Correo propio del colaborador. El archivo oficial usa
+                // "Direccion de Correo Colaborador"; se permiten correos repetidos
+                // porque en RH algunos colaboradores comparten una cuenta operativa.
+                $correo = $this->limpiarCorreo($this->value($row, $headers, [
+                    'DIRECCION_DE_CORREO_COLABORADOR',
+                    'DIRECCIÓN_DE_CORREO_COLABORADOR',
+                    'CORREO_COLABORADOR',
+                    'EMAIL_COLABORADOR',
                     'CORREO',
                     'EMAIL',
                     'CORREO_ELECTRONICO',
                     'CORREO_ELECTRÓNICO',
                 ]));
 
+                // El correo del jefe pertenece al registro del líder, no se copia
+                // al colaborador. Puede repetirse en muchas filas y eso es normal.
+                $correoJefe = $this->limpiarCorreo($this->value($row, $headers, [
+                    'DIRECCION_DE_CORREO_JEFE',
+                    'DIRECCIÓN_DE_CORREO_JEFE',
+                    'CORREO_JEFE',
+                    'EMAIL_JEFE',
+                    'CORREO_LIDER',
+                    'EMAIL_LIDER',
+                ]));
+
                 $curp = $this->normalizarClave($this->value($row, $headers, ['CURP']));
                 $rfc = $this->normalizarClave($this->value($row, $headers, ['RFC']));
 
                 $diasGanadosAlDia = $this->decimal($this->value($row, $headers, [
-                    'DIAS_GANADOS_AL_DIA_DE_HOY_MAS_LOS_PROPORCIONALES_DEL_ANO_ACTUAL',
-                    'DIAS_GANADOS_AL_DIA_DE_HOY_MÁS_LOS_PROPORCIONALES_DEL_AÑO_ACTUAL',
-                    'DIAS_GANADOS_AL_DIA_DE_HOY',
-                    'DIAS_VACACIONES_GANADOS',
-                    'DIAS_GANADOS',
-                ]));
-
-                $diasDisponiblesExcel = $this->decimal($this->value($row, $headers, [
-                    'PROPORCIONALES',
-                    'DIAS_PROPORCIONALES',
-                    'SALDO',
-                    'SALDO_VACACIONES',
-                    'DIAS_DISPONIBLES',
-                    'DIAS_VACACIONES_DISPONIBLES',
-                    'VACACIONES_DISPONIBLES',
+                    'DIAS GANADOS AL DIA DE HOY MÁS LOS PROPORCIONALES DEL AÑO ACTUAL',
                 ]));
 
                 $fechasVacaciones = $this->extraerFechasVacaciones($row, $headers);
@@ -198,7 +452,7 @@ class PermisosEmpleadosController extends Controller
 
                 $liderId = null;
                 if ($jefeDirecto) {
-                    [$liderId, $liderCreado] = $this->obtenerOCrearLider($jefeDirecto, $areaId);
+                    [$liderId, $liderCreado] = $this->obtenerOCrearLider($jefeDirecto, $areaId, $correoJefe);
                     if ($liderCreado) {
                         $lideresCreados++;
                     }
@@ -207,13 +461,30 @@ class PermisosEmpleadosController extends Controller
                 $empleado = $this->buscarEmpleado($numeroEmpleado, $curp, $rfc, $nombre);
                 $esNuevo = ! $empleado;
 
-                $diasCorrespondientesSistema = $this->diasVacacionesCorrespondientes($fechaIngreso);
-                $saldoOficial = $diasDisponiblesExcel ?? 0;
+                // El valor de esta columna ya es el saldo oficial al corte del archivo.
+                // No se restan nuevamente vacaciones históricas porque eso duplicaría el descuento.
+                $baseGanadaExcel = round((float) ($diasGanadosAlDia ?? 0), 4);
+                if ($diasGanadosAlDia === null) {
+                    $errores[] = 'Fila ' . ($rowIndex + 1) . ': la columna oficial está vacía o contiene un valor no numérico; se asignó 0.';
+                }
+                $saldoSnapshot = round(max(0, $baseGanadaExcel), 4);
 
-                // El Excel manda el saldo oficial. Como el sistema calcula disponibles como
-                // dias_correspondientes + vacaciones_ajuste - vacaciones_históricas_recibidas,
-                // ajustamos vacaciones_ajuste para que el saldo final del sistema coincida con Excel.
-                $vacacionesAjuste = round($saldoOficial + $diasHistoricos - $diasCorrespondientesSistema, 2);
+                // Separamos el saldo oficial en dos bolsas. Entre enero y abril,
+                // la parte que excede el proporcional del año actual se considera
+                // saldo del año anterior y vence el 30 de abril. A partir de mayo,
+                // todo el saldo oficial vigente pertenece al año actual.
+                $proporcionalAnioActualAlCorte = $fechaIngreso
+                    ? app(\App\Services\Permisos\PermisoSaldoService::class)
+                        ->proporcionalGeneradoEnAnio(Carbon::parse($fechaIngreso), $fechaCorte)
+                    : 0.0;
+
+                if ($fechaCorte->month <= 4) {
+                    $saldoActualBase = round(min($saldoSnapshot, $proporcionalAnioActualAlCorte), 4);
+                    $saldoAnteriorBase = round(max(0, $saldoSnapshot - $saldoActualBase), 4);
+                } else {
+                    $saldoAnteriorBase = 0.0;
+                    $saldoActualBase = $saldoSnapshot;
+                }
 
                 $data = [
                     'area_id' => $areaId,
@@ -227,10 +498,16 @@ class PermisosEmpleadosController extends Controller
                     'fecha_ingreso' => $fechaIngreso,
                     'es_lider' => false,
                     'activo' => true,
-                    'vacaciones_ajuste' => $vacacionesAjuste,
+                    'vacaciones_ajuste' => 0,
                     'vacaciones_usados' => $diasHistoricos,
-                    'vacaciones_pendientes' => $saldoOficial,
-                    'dias_vacaciones' => $diasGanadosAlDia,
+                    'vacaciones_pendientes' => $saldoSnapshot,
+                    'vacaciones_ganadas_base' => $baseGanadaExcel,
+                    'vacaciones_saldo_anterior_base' => $saldoAnteriorBase,
+                    'vacaciones_saldo_actual_base' => $saldoActualBase,
+                    'vacaciones_anio_base' => $fechaCorte->year,
+                    'vacaciones_fecha_vencimiento' => Carbon::create($fechaCorte->year, 4, 30)->toDateString(),
+                    'vacaciones_fecha_corte' => $fechaCorte->toDateString(),
+                    'dias_vacaciones' => $baseGanadaExcel,
                     'dias_vacaciones_usados' => $diasHistoricos,
                     'departamento' => $departamento,
                     'updated_at' => now(),
@@ -297,6 +574,10 @@ class PermisosEmpleadosController extends Controller
             'puesto' => ['nullable', 'string', 'max:255'],
             'fecha_ingreso' => ['nullable', 'date'],
             'vacaciones_ajuste' => ['nullable', 'numeric'],
+            'vacaciones_ganadas_base' => ['nullable', 'numeric', 'min:0'],
+            'vacaciones_saldo_anterior_base' => ['nullable', 'numeric', 'min:0'],
+            'vacaciones_saldo_actual_base' => ['nullable', 'numeric', 'min:0'],
+            'vacaciones_fecha_corte' => ['nullable', 'date', 'before_or_equal:today'],
             'es_lider' => ['nullable', 'boolean'],
             'activo' => ['nullable', 'boolean'],
             'dias_laborales' => ['nullable', 'array'],
@@ -315,6 +596,158 @@ class PermisosEmpleadosController extends Controller
         $empleado->update($validated);
 
         return back()->with('success', 'Empleado actualizado correctamente.');
+    }
+
+
+    public function destroy(Empleado $empleado)
+    {
+        $nombre = $empleado->nombre;
+        $empleadoId = $empleado->id;
+
+        // Eliminamos los archivos asociados antes de borrar sus registros.
+        if (Schema::hasTable('permisos_solicitudes')) {
+            PermisoSolicitud::where('empleado_id', $empleadoId)
+                ->get(['id', 'documento_path', 'archivo_firmado_path'])
+                ->each(function (PermisoSolicitud $solicitud) {
+                    if ($solicitud->documento_path) {
+                        Storage::disk(config('permisos.documentos_disk', 'public'))
+                            ->delete($solicitud->documento_path);
+                    }
+
+                    if ($solicitud->archivo_firmado_path) {
+                        Storage::disk('public')->delete($solicitud->archivo_firmado_path);
+                    }
+
+                    Storage::disk('public')
+                        ->deleteDirectory("permisos/firmados/solicitud_{$solicitud->id}");
+                });
+        }
+
+        DB::transaction(function () use ($empleado, $empleadoId) {
+            // Si era líder, sus colaboradores quedan disponibles para asignar
+            // otro líder en lugar de impedir la eliminación.
+            Empleado::where('lider_id', $empleadoId)->update(['lider_id' => null]);
+
+            if (Schema::hasTable('permisos_solicitudes')) {
+                $solicitudIds = DB::table('permisos_solicitudes')
+                    ->where('empleado_id', $empleadoId)
+                    ->pluck('id');
+
+                foreach ([
+                    'permiso_solicitud_dias',
+                    'permiso_documento_envios',
+                    'permisos_historial',
+                    'permiso_notificaciones',
+                    'permiso_firmas',
+                ] as $tablaDetalle) {
+                    if (Schema::hasTable($tablaDetalle)
+                        && Schema::hasColumn($tablaDetalle, 'permiso_solicitud_id')
+                        && $solicitudIds->isNotEmpty()) {
+                        DB::table($tablaDetalle)
+                            ->whereIn('permiso_solicitud_id', $solicitudIds->all())
+                            ->delete();
+                    }
+                }
+
+                if (Schema::hasColumn('permisos_solicitudes', 'lider_id')) {
+                    DB::table('permisos_solicitudes')
+                        ->where('lider_id', $empleadoId)
+                        ->update(['lider_id' => null]);
+                }
+
+                DB::table('permisos_solicitudes')
+                    ->where('empleado_id', $empleadoId)
+                    ->delete();
+            }
+
+            if (Schema::hasTable('permiso_firmas') && Schema::hasColumn('permiso_firmas', 'empleado_id')) {
+                DB::table('permiso_firmas')
+                    ->where('empleado_id', $empleadoId)
+                    ->update(['empleado_id' => null]);
+            }
+
+            foreach (['vacaciones_solicitudes', 'vacaciones_ajustes'] as $tabla) {
+                if (Schema::hasTable($tabla) && Schema::hasColumn($tabla, 'empleado_id')) {
+                    DB::table($tabla)->where('empleado_id', $empleadoId)->delete();
+                }
+            }
+
+            $empleado->delete();
+        });
+
+        return redirect()
+            ->route('admin.permisos.empleados.index')
+            ->with('success', "Empleado {$nombre} eliminado definitivamente junto con sus solicitudes e históricos.");
+    }
+
+
+    private function empleadosQuery(Request $request)
+    {
+        $query = Empleado::with(['area', 'lider'])->orderBy('nombre');
+
+        if ($request->filled('area_id')) {
+            $query->where('area_id', $request->area_id);
+        }
+
+        if ($request->filled('activo')) {
+            $query->where('activo', $request->activo === '1');
+        }
+
+        if ($request->filled('q')) {
+            $q = trim($request->q);
+            $normalizado = Str::upper(preg_replace('/[^A-Za-z0-9]/', '', $q));
+
+            $query->where(function ($sub) use ($q, $normalizado) {
+                $sub->where('nombre', 'like', "%{$q}%")
+                    ->orWhere('correo', 'like', "%{$q}%")
+                    ->orWhere('numero_empleado', 'like', "%{$q}%")
+                    ->orWhere('curp', 'like', "%{$normalizado}%")
+                    ->orWhere('rfc', 'like', "%{$normalizado}%")
+                    ->orWhere('puesto', 'like', "%{$q}%");
+            });
+        }
+
+        return $query;
+    }
+
+    private function estilizarHoja($sheet, string $ultimaColumna, int $ultimaFila): void
+    {
+        $rangoEncabezado = "A1:{$ultimaColumna}1";
+        $sheet->freezePane('A2');
+        $sheet->setAutoFilter($rangoEncabezado);
+        $sheet->getRowDimension(1)->setRowHeight(28);
+
+        $sheet->getStyle($rangoEncabezado)->applyFromArray([
+            'font' => [
+                'bold' => true,
+                'color' => ['rgb' => 'FFFFFF'],
+            ],
+            'fill' => [
+                'fillType' => Fill::FILL_SOLID,
+                'startColor' => ['rgb' => '312E81'],
+            ],
+            'alignment' => [
+                'horizontal' => Alignment::HORIZONTAL_CENTER,
+                'vertical' => Alignment::VERTICAL_CENTER,
+                'wrapText' => true,
+            ],
+            'borders' => [
+                'allBorders' => [
+                    'borderStyle' => Border::BORDER_THIN,
+                    'color' => ['rgb' => 'CBD5E1'],
+                ],
+            ],
+        ]);
+
+        if ($ultimaFila > 1) {
+            $sheet->getStyle("A2:{$ultimaColumna}{$ultimaFila}")
+                ->getAlignment()
+                ->setVertical(Alignment::VERTICAL_TOP);
+        }
+
+        foreach (range('A', $ultimaColumna) as $columna) {
+            $sheet->getColumnDimension($columna)->setAutoSize(true);
+        }
     }
 
     private function ensureImportSchema(): void
@@ -489,7 +922,7 @@ class PermisosEmpleadosController extends Controller
             'fecha_fin' => $fecha,
             'dias_solicitados' => 1,
             'motivo' => $this->motivoImportado,
-            'estatus' => 'formato_recibido',
+            'estatus' => 'historico',
             'formato_recibido' => true,
             'formato_recibido_at' => now(),
             'observaciones_rh' => 'Registro histórico importado desde el archivo de saldos de vacaciones.',
@@ -571,15 +1004,28 @@ class PermisosEmpleadosController extends Controller
         return [DB::table('areas')->insertGetId($this->filtrarColumnas('areas', $data)), true];
     }
 
-    private function obtenerOCrearLider(string $nombre, ?int $areaId): array
+    private function obtenerOCrearLider(string $nombre, ?int $areaId, ?string $correo = null): array
     {
         $nombre = $this->limpiarTexto($nombre);
 
-        $lider = DB::table('empleados')->where('nombre', $nombre)->first();
+        // Primero se busca por nombre normalizado para evitar duplicados por
+        // dobles espacios, mayúsculas o acentos. Como respaldo, se usa el correo.
+        $nombreNormalizado = $this->normalizarNombre($nombre);
+        $lider = DB::table('empleados')->get()->first(function ($item) use ($nombreNormalizado) {
+            return $this->normalizarNombre($item->nombre ?? null) === $nombreNormalizado;
+        });
+
+        if (! $lider && $correo && Schema::hasColumn('empleados', 'correo')) {
+            $lider = DB::table('empleados')
+                ->whereRaw('LOWER(correo) = ?', [mb_strtolower($correo)])
+                ->where('es_lider', true)
+                ->first();
+        }
 
         if ($lider) {
             DB::table('empleados')->where('id', $lider->id)->update($this->filtrarColumnas('empleados', [
                 'area_id' => $lider->area_id ?? $areaId,
+                'correo' => $correo,
                 'es_lider' => true,
                 'activo' => true,
                 'updated_at' => now(),
@@ -588,9 +1034,13 @@ class PermisosEmpleadosController extends Controller
             return [$lider->id, false];
         }
 
+        $numeroEmpleadoLider = 'LIDER-' . strtoupper(substr(sha1(Str::ascii($nombre)), 0, 12));
+
         $data = [
             'area_id' => $areaId,
+            'numero_empleado' => $numeroEmpleadoLider,
             'nombre' => $nombre,
+            'correo' => $correo,
             'es_lider' => true,
             'activo' => true,
             'vacaciones_ajuste' => 0,
@@ -685,7 +1135,7 @@ class PermisosEmpleadosController extends Controller
             return null;
         }
 
-        return round((float) $value, 2);
+        return round((float) $value, 4);
     }
 
     private function fecha($value): ?string
@@ -762,6 +1212,38 @@ class PermisosEmpleadosController extends Controller
         $value = trim(preg_replace('/\s+/', ' ', (string) $value));
 
         return $value !== '' ? $value : null;
+    }
+
+
+    private function limpiarCorreo($value): ?string
+    {
+        $value = $this->limpiarTexto($value);
+
+        if (! $value) {
+            return null;
+        }
+
+        // Algunos archivos pegan más de un correo con ; , o saltos de línea.
+        // Se conserva el primer correo válido, en minúsculas.
+        $candidatos = preg_split('/[;,\s]+/', $value) ?: [];
+
+        foreach ($candidatos as $candidato) {
+            $candidato = mb_strtolower(trim($candidato));
+
+            if (filter_var($candidato, FILTER_VALIDATE_EMAIL)) {
+                return $candidato;
+            }
+        }
+
+        return null;
+    }
+
+    private function normalizarNombre(?string $nombre): string
+    {
+        $nombre = Str::ascii($this->limpiarTexto($nombre) ?? '');
+        $nombre = mb_strtoupper($nombre);
+
+        return preg_replace('/[^A-Z0-9]/', '', $nombre) ?? '';
     }
 
     private function normalizarClave(?string $valor): ?string
